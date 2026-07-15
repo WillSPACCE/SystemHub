@@ -48,9 +48,17 @@ The Firewall page allows you to manage Windows firewall settings directly from t
 
 > Some firewall operations require administrator privileges.
 
-### 🧹 Cleanup
+### 🧹 Central de Manutenção
 
-The Cleanup page tries to remove temporary files and common cache folders used by the system and installed apps. The process is conservative and avoids aggressive deletion of important data.
+The Cleanup page now works as a professional maintenance center. With one click, it can:
+
+- collect initial system information;
+- run a visual checklist of the maintenance steps;
+- remove selected temporary files and cache folders;
+- run a quick Microsoft Defender scan;
+- generate a TXT technical report;
+- keep a history of maintenance runs;
+- send the report automatically through Resend when configured.
 
 ### ⚙️ Settings
 

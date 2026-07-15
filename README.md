@@ -41,9 +41,17 @@ Na aba Firewall, você pode:
 
 > Algumas operações exigem permissões administrativas.
 
-### 🧹 Limpeza
+### 🧹 Central de Manutenção
 
-A aba Cleanup tenta remover arquivos temporários e pastas de cache comuns do Windows, de forma conservadora e segura, sem excluir dados importantes de maneira agressiva.
+A aba Limpeza agora funciona como uma Central de Manutenção profissional. Com um único clique, é possível:
+
+- coletar dados iniciais do sistema;
+- executar um checklist visual das etapas;
+- limpar arquivos temporários e caches selecionados;
+- rodar uma verificação rápida do Microsoft Defender;
+- gerar um relatório técnico em TXT;
+- salvar o histórico das execuções;
+- enviar o relatório automaticamente por e-mail via Resend, quando configurado.
 
 ### ⚙️ Configurações
 

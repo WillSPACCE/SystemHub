@@ -11,6 +11,8 @@ from modules.firewall import FirewallManager
 from modules.cleanup import CleanupManager
 from modules.collector_service import HardwareCollectorService
 from modules.hardware_service import HardwareService
+from modules.maintenance import MaintenanceCoordinator
+from modules.settings import ReportSettingsManager
 
 
 THEME = {
@@ -347,6 +349,9 @@ class App(tk.Tk):
         self._loading_frame = 0
         self._last_window_size = (0, 0)
         self._destroying = False
+        self.maintenance_coordinator = MaintenanceCoordinator()
+        self.report_settings_manager = ReportSettingsManager()
+        self._report_settings = self.report_settings_manager.load()
 
         try:
             self._configure_styles()
@@ -1006,17 +1011,58 @@ class App(tk.Tk):
 
     def _build_cleanup_page(self):
         page = self.pages["Limpeza"]
-        header = tk.Label(page, text="Limpeza segura", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(16, min_size=14, max_size=20, weight="bold"), wraplength=720, justify="left")
+        header = tk.Label(page, text="Central de Manutenção", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(16, min_size=14, max_size=20, weight="bold"), wraplength=720, justify="left")
         header.pack(anchor="nw", pady=(12, 8), padx=24)
-        sub = tk.Label(page, text="Remova arquivos temporários e dados desnecessários com segurança.", bg=THEME["bg"], fg=THEME['text_secondary'], font=self._font(11, min_size=10, max_size=13), wraplength=720, justify="left")
+        sub = tk.Label(page, text="Execute uma manutenção completa com checklist em tempo real, relatório automático e envio opcional por e-mail.", bg=THEME["bg"], fg=THEME['text_secondary'], font=self._font(11, min_size=10, max_size=13), wraplength=720, justify="left")
         sub.pack(anchor="nw", padx=24)
 
         controls = tk.Frame(page, bg=THEME["bg"])
         controls.pack(fill="x", padx=24, pady=16)
-        tk.Button(controls, text="Executar limpeza", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self.run_cleanup).pack(side="left")
+        self.cleanup_start_button = tk.Button(controls, text="Iniciar Manutenção", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self.run_cleanup)
+        self.cleanup_start_button.pack(side="left")
+        self.cleanup_reports_button = tk.Button(controls, text="Abrir Pasta de Relatórios", bg=THEME['accent_green'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self._open_reports_folder)
+        self.cleanup_reports_button.pack(side="left", padx=8)
+        self.cleanup_test_button = tk.Button(controls, text="Testar Envio", bg=THEME['accent_orange'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self._test_report_delivery)
+        self.cleanup_test_button.pack(side="left", padx=8)
 
-        self.cleanup_output = tk.Text(page, wrap="word", height=20, bg=THEME["card_bg"], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
+        summary_frame = tk.Frame(page, bg=THEME["bg"])
+        summary_frame.pack(fill="x", padx=24, pady=(0, 8))
+        self.cleanup_summary = tk.Label(summary_frame, text="Estimativa de espaço recuperável: 0 B", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12), anchor="w")
+        self.cleanup_summary.pack(anchor="w")
+        self.cleanup_progress = ttk.Progressbar(summary_frame, orient="horizontal", length=420, mode="determinate")
+        self.cleanup_progress.pack(anchor="w", pady=(6, 0))
+        self.cleanup_progress_label = tk.Label(summary_frame, text="0%", bg=THEME["bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12))
+        self.cleanup_progress_label.pack(anchor="w")
+
+        options_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow'], highlightthickness=1)
+        options_card.pack(fill="x", padx=24, pady=(0, 12))
+        tk.Label(options_card, text="Itens selecionados para limpeza", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"), anchor="w").pack(anchor="w", padx=16, pady=(12, 6))
+        self.cleanup_options_frame = tk.Frame(options_card, bg=THEME['card_bg'])
+        self.cleanup_options_frame.pack(fill="x", padx=16, pady=(0, 12))
+
+        self.cleanup_action_vars = {}
+        for action in self.maintenance_coordinator.get_action_labels():
+            var = tk.BooleanVar(value=True)
+            self.cleanup_action_vars[action['id']] = var
+            row = tk.Frame(self.cleanup_options_frame, bg=THEME['card_bg'])
+            row.pack(fill="x", pady=3)
+            tk.Checkbutton(row, text=action['name'], variable=var, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_green'], command=self._refresh_cleanup_estimate).pack(anchor="w")
+
+        checklist_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow'], highlightthickness=1)
+        checklist_card.pack(fill="x", padx=24, pady=(0, 12))
+        tk.Label(checklist_card, text="Checklist da manutenção", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"), anchor="w").pack(anchor="w", padx=16, pady=(12, 6))
+        self.cleanup_checklist_frame = tk.Frame(checklist_card, bg=THEME['card_bg'])
+        self.cleanup_checklist_frame.pack(fill="x", padx=16, pady=(0, 12))
+        self.cleanup_step_labels = {}
+        for step_name in ["Coletando informações", "Limpando arquivos", "Defender", "Atualizando informações", "Gerando relatório", "Enviando relatório", "Concluído"]:
+            label = tk.Label(self.cleanup_checklist_frame, text=f"☐ {step_name}", bg=THEME['card_bg'], fg=THEME['text_primary'], anchor="w", font=self._font(10, min_size=9, max_size=12))
+            label.pack(anchor="w", pady=2)
+            self.cleanup_step_labels[step_name] = label
+
+        self.cleanup_output = tk.Text(page, wrap="word", height=14, bg=THEME["card_bg"], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
         self.cleanup_output.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+        self._reset_cleanup_ui()
+        self._refresh_cleanup_estimate()
 
     def _build_settings_page(self):
         page = self.pages["Configurações"]
@@ -1031,6 +1077,88 @@ class App(tk.Tk):
         tk.Label(settings_card.inner_frame, text="Tema: Claro", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=4)
         tk.Label(settings_card.inner_frame, text="Estilo: Dashboard moderno", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=4)
         tk.Button(settings_card.inner_frame, text="Configurar atualização automática", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=12, pady=8, cursor="hand2", command=self._open_settings_dialog).pack(anchor="e", pady=(8, 0))
+
+        reports_card = RoundedCard(page, "Relatórios", "#0F766E", width=1060, height=220)
+        reports_card.pack(padx=24, pady=(0, 16), fill="x")
+        tk.Label(reports_card.inner_frame, text="Envio automático por Resend", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=(4, 6))
+        self.report_auto_send = tk.BooleanVar(value=bool(self._report_settings.get('auto_send', False)))
+        self.report_recipient = tk.StringVar(value=self._report_settings.get('recipient_email', 'martins.willyan20@gmail.com'))
+        self.report_api_key = tk.StringVar(value=self._report_settings.get('resend_api_key', ''))
+        tk.Checkbutton(reports_card.inner_frame, text="Enviar automaticamente", variable=self.report_auto_send, bg=THEME['card_bg'], fg=THEME['text_primary']).pack(anchor="w", pady=4)
+        tk.Label(reports_card.inner_frame, text="Email destinatário", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        tk.Entry(reports_card.inner_frame, textvariable=self.report_recipient, bg=THEME['card_bg'], fg=THEME['text_primary']).pack(fill="x", pady=2)
+        tk.Label(reports_card.inner_frame, text="API Key Resend", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        tk.Entry(reports_card.inner_frame, textvariable=self.report_api_key, show="*", bg=THEME['card_bg'], fg=THEME['text_primary']).pack(fill="x", pady=2)
+        tk.Button(reports_card.inner_frame, text="Salvar Relatórios", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=12, pady=8, cursor="hand2", command=self._save_report_settings).pack(anchor="e", pady=(8, 0))
+
+    def _refresh_cleanup_estimate(self):
+        if not hasattr(self, 'cleanup_summary'):
+            return
+        selected_ids = [item_id for item_id, var in self.cleanup_action_vars.items() if var.get()]
+        estimate = self.maintenance_coordinator.cleaner.estimate_recovery(selected_ids)
+        self.cleanup_summary.config(text=f"Estimativa de espaço recuperável: {estimate['total_human']}")
+
+    def _reset_cleanup_ui(self):
+        if not hasattr(self, 'cleanup_output'):
+            return
+        self.cleanup_output.delete("1.0", tk.END)
+        self.cleanup_output.insert(tk.END, "Aguardando início da manutenção...\n")
+        if hasattr(self, 'cleanup_progress'):
+            self.cleanup_progress['value'] = 0
+        if hasattr(self, 'cleanup_progress_label'):
+            self.cleanup_progress_label.config(text="0%")
+        for step_name, label in self.cleanup_step_labels.items():
+            label.config(text=f"☐ {step_name}")
+
+    def _update_cleanup_step(self, step_name: str, status: str):
+        if step_name not in self.cleanup_step_labels:
+            return
+        icon = "☑" if status == "done" else "⚠" if status == "error" else "⏳"
+        self.cleanup_step_labels[step_name].config(text=f"{icon} {step_name}")
+
+    def _update_cleanup_progress(self, percent: int):
+        if hasattr(self, 'cleanup_progress'):
+            self.cleanup_progress['value'] = percent
+        if hasattr(self, 'cleanup_progress_label'):
+            self.cleanup_progress_label.config(text=f"{percent}%")
+
+    def _append_cleanup_log(self, message: str):
+        if hasattr(self, 'cleanup_output'):
+            self.cleanup_output.insert(tk.END, f"{message}\n")
+            self.cleanup_output.see(tk.END)
+
+    def _set_cleanup_buttons_state(self, enabled: bool):
+        for widget in [self.cleanup_start_button, self.cleanup_reports_button, self.cleanup_test_button]:
+            if widget is not None:
+                widget.configure(state="normal" if enabled else "disabled")
+
+    def _save_report_settings(self):
+        self._report_settings = {
+            "auto_send": bool(self.report_auto_send.get()),
+            "resend_api_key": self.report_api_key.get(),
+            "recipient_email": self.report_recipient.get(),
+        }
+        self.report_settings_manager.save(self._report_settings)
+        self._append_cleanup_log("Configurações de relatórios salvas.")
+
+    def _open_reports_folder(self):
+        folder = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Relatorio_Limpeza'))
+        os.makedirs(folder, exist_ok=True)
+        try:
+            if os.name == 'nt':
+                os.startfile(folder)
+            else:
+                os.system(f'xdg-open "{folder}"')
+        except Exception as exc:
+            self._append_cleanup_log(f"Não foi possível abrir a pasta: {exc}")
+
+    def _test_report_delivery(self):
+        try:
+            self._append_cleanup_log("Enviando teste de relatório...")
+            self.maintenance_coordinator.test_send(self._report_settings)
+            self._append_cleanup_log("Teste realizado com sucesso.")
+        except Exception as exc:
+            self._append_cleanup_log(f"Erro no teste de envio: {exc}")
 
     def _settings_path(self):
         return os.path.join(os.path.dirname(__file__), '..', 'settings.json') if getattr(sys := __import__('sys'), 'frozen', False) == False else os.path.join(os.path.dirname(sys.executable), 'settings.json')
@@ -2425,14 +2553,57 @@ class App(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def run_cleanup(self):
-        try:
-            manager = CleanupManager()
-            result = manager.run_cleanup()
-            self.cleanup_output.delete("1.0", tk.END)
-            self.cleanup_output.insert(tk.END, "\n".join(result))
-        except Exception as exc:
-            self.cleanup_output.delete("1.0", tk.END)
-            self.cleanup_output.insert(tk.END, f"Erro: {exc}\n")
+        if getattr(self, '_maintenance_running', False):
+            return
+        self._maintenance_running = True
+        self._set_cleanup_buttons_state(False)
+        self._reset_cleanup_ui()
+        self._append_cleanup_log("Iniciando manutenção...")
+        selected_ids = [item_id for item_id, var in self.cleanup_action_vars.items() if var.get()]
+
+        def worker():
+            try:
+                initial_payload = self.data or self._collect_hardware_payload(force=True)
+                self._schedule_ui_update(lambda: self._append_cleanup_log("Coletando dados iniciais..."))
+                self._schedule_ui_update(lambda: self._update_cleanup_step("Coletando informações", "running"))
+
+                def progress(step_name, status, message, percent):
+                    self._schedule_ui_update(lambda step_name=step_name, status=status, message=message, percent=percent: self._handle_cleanup_progress(step_name, status, message, percent))
+
+                result = self.maintenance_coordinator.run_maintenance(
+                    selected_ids=selected_ids,
+                    initial_payload=initial_payload,
+                    settings=self._report_settings,
+                    progress_callback=progress,
+                )
+                self._schedule_ui_update(lambda result=result: self._finalize_cleanup(result))
+            except Exception as exc:
+                self._schedule_ui_update(lambda exc=exc: self._finalize_cleanup({"error": str(exc)}))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _handle_cleanup_progress(self, step_name: str, status: str, message: str, percent: int):
+        if message:
+            self._append_cleanup_log(message)
+        self._update_cleanup_step(step_name, status)
+        self._update_cleanup_progress(percent)
+
+    def _finalize_cleanup(self, result: dict):
+        self._maintenance_running = False
+        self._set_cleanup_buttons_state(True)
+        self._update_cleanup_step("Concluído", "done")
+        self._update_cleanup_progress(100)
+        if result.get("error"):
+            self._append_cleanup_log(f"Erro: {result['error']}")
+            self._update_cleanup_step("Concluído", "error")
+            return
+        report_path = result.get("report_path")
+        if report_path:
+            self._append_cleanup_log(f"Relatório salvo em {report_path}")
+        if result.get("sent"):
+            self._append_cleanup_log("Relatório enviado com sucesso.")
+        else:
+            self._append_cleanup_log("Relatório salvo localmente. O envio depende da configuração de e-mail.")
 
 
 if __name__ == "__main__":
