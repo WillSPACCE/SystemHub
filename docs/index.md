@@ -1,28 +1,28 @@
-# SystemHub Documentation
+# 📘 SystemHub Documentation
 
-SystemHub is a Windows desktop utility built in Python with a modern Tkinter interface. It combines system diagnostics, firewall management, and temporary-file cleanup in one place so you can inspect and optimize your machine without switching between several tools.
+SystemHub is a Windows desktop utility built in Python with a modern Tkinter interface. It combines system diagnostics, firewall management and temporary-file cleanup in one place so you can inspect, maintain and optimize your machine without switching between different tools.
 
-## What the project does
+## 🌟 What the project does
 
 SystemHub helps you:
 
-- view a live dashboard with CPU, RAM, storage and system information;
-- inspect firewall rules and active connections;
-- allow, block or remove firewall rules for specific ports;
-- clean temporary files and common cache folders;
-- export firewall rules to JSON, TXT or CSV files.
+- 📊 view a live dashboard with CPU, RAM, storage and system information;
+- 🛡️ inspect firewall rules and active connections;
+- 🔓 allow, block or remove firewall rules for specific ports;
+- 🧹 clean temporary files and common cache folders;
+- 📁 export firewall data to JSON, TXT or CSV files.
 
-The tool is designed to be practical for everyday use, with a simple interface and clear actions for common diagnostics tasks.
+The tool is designed to be practical for everyday use, with a simple interface and clear actions for common maintenance tasks.
 
-## Main features
+## 🧩 Main features
 
-### Dashboard
+### 📊 Dashboard
 
 The Dashboard page shows an overview of the system in real time:
 
 - operating system and build;
-- CPU name, model, usage, frequency and temperature;
-- RAM total, usage and modules;
+- CPU name, usage, frequency and temperature;
+- RAM total, usage and installed modules;
 - disk usage, health and temperature when available;
 - motherboard and BIOS information;
 - GPU data when exposed by the environment.
@@ -34,7 +34,7 @@ The data is collected through a combination of:
 - LibreHardwareMonitor when available;
 - SMART-based disk information when supported.
 
-### Firewall
+### 🛡️ Firewall
 
 The Firewall page allows you to manage Windows firewall settings directly from the app:
 
@@ -48,22 +48,22 @@ The Firewall page allows you to manage Windows firewall settings directly from t
 
 > Some firewall operations require administrator privileges.
 
-### Cleanup
+### 🧹 Cleanup
 
 The Cleanup page tries to remove temporary files and common cache folders used by the system and installed apps. The process is conservative and avoids aggressive deletion of important data.
 
-### Settings
+### ⚙️ Settings
 
 The Settings page stores the app’s preferences and keeps the interface experience consistent.
 
-## Requirements
+## 🛠️ Requirements
 
 - Python 3.10 or higher;
 - Windows;
 - administrator privileges for some firewall actions;
 - the required Python libraries listed in requirements.txt.
 
-## Installation
+## ▶️ Installation and startup
 
 1. Open the terminal in the project folder.
 2. Create and activate a virtual environment if you want an isolated setup.
@@ -75,8 +75,6 @@ py -3 -m pip install -r requirements.txt
 
 4. If you want hardware sensor monitoring to work better, place the LibreHardwareMonitor library in the project folder or in the modules folder.
 
-## How to run
-
 Run the app with:
 
 ```bash
@@ -85,30 +83,30 @@ py -3 main.py
 
 The interface opens as a desktop application and loads the dashboard automatically.
 
-## How to use the app
+## 🧭 How to use the app
 
-### 1. Start the app
+### 1. 🚀 Start the app
 
-Launch the program and wait for the dashboard to load. The initial collection can take a few seconds.
+Launch the program and wait for the dashboard to load. The initial data collection can take a few seconds.
 
-### 2. Review the dashboard
+### 2. 📊 Review the dashboard
 
 Use the Dashboard page to inspect the current state of the hardware and the operating system.
 
-### 3. Manage firewall rules
+### 3. 🛡️ Manage firewall rules
 
 Open the Firewall page to:
 
-- check current firewall status;
+- check the current firewall status;
 - filter connections;
 - allow or block ports;
 - refresh the list after changes.
 
-### 4. Clean temporary files
+### 4. 🧹 Clean temporary files
 
 Open the Cleanup page and run the cleanup process. Review the output carefully before using it on production machines or shared computers.
 
-## Project structure
+## 📁 Project structure
 
 - main.py: app entry point and Tkinter UI
 - modules/cleanup.py: temporary-file cleanup logic
@@ -117,7 +115,7 @@ Open the Cleanup page and run the cleanup process. Review the output carefully b
 - modules/hardware_services.py: integration with hardware libraries
 - tests/: automated regression tests for the main features
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 ### The app does not show hardware details
 
@@ -139,7 +137,7 @@ If firewall actions fail, make sure:
 
 Some folders may be protected by the operating system or by corporate policies. In that case, the cleanup step can skip them silently.
 
-## Testing
+## 🧪 Testing
 
 Run the test suite with:
 
@@ -147,7 +145,7 @@ Run the test suite with:
 pytest -q
 ```
 
-## Roadmap
+## 🗺️ Roadmap
 
 This project continues to evolve with improvements in:
 
@@ -156,6 +154,16 @@ This project continues to evolve with improvements in:
 - better rule history and reporting;
 - stronger error handling and stability.
 
-## License
+## 🚀 Future executable
+
+A future improvement will be the creation of a Windows executable so the app can be opened without running Python manually.
+
+Planned for that stage:
+
+- 📦 generate a .exe for Windows;
+- 🖱️ simpler installation for end users;
+- ⚡ faster startup and easier distribution.
+
+## 📜 License
 
 This project is intended for personal and technical use. Please review the repository settings and any local licensing notes before redistributing it.
