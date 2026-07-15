@@ -1,0 +1,10 @@
+.venv/
+.venv-1/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+*.tmp
+*.swp

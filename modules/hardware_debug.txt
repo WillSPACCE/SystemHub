@@ -1,0 +1,447 @@
+====================================
+Resumo da coleta
+====================================
+Coletado em: 15/07/2026 16:19:37
+DLL: 
+====================================
+Sensores:
+Tipo: Cpu
+Sensor: CPU Core #1
+Tipo do Sensor: Load
+Valor: 90.9%
+====================================
+Tipo: Cpu
+Sensor: CPU Core #2
+Tipo do Sensor: Load
+Valor: 72.7%
+====================================
+Tipo: Cpu
+Sensor: CPU Core #3
+Tipo do Sensor: Load
+Valor: 81.8%
+====================================
+Tipo: Cpu
+Sensor: CPU Core #4
+Tipo do Sensor: Load
+Valor: 72.7%
+====================================
+Tipo: Cpu
+Sensor: CPU Total
+Tipo do Sensor: Load
+Valor: 79.6%
+====================================
+Tipo: Cpu
+Sensor: CPU Core Max
+Tipo do Sensor: Load
+Valor: 90.9%
+====================================
+Tipo: Cpu
+Sensor: Cores (Average)
+Tipo do Sensor: Clock
+Valor: 0.0
+====================================
+Tipo: Cpu
+Sensor: Cores (Average Effective)
+Tipo do Sensor: Clock
+Valor: 0.0
+====================================
+Tipo: Cpu
+Sensor: Core #1 (Effective)
+Tipo do Sensor: Clock
+Valor: 0.0
+====================================
+Tipo: Cpu
+Sensor: Core #1 VID
+Tipo do Sensor: Voltage
+Valor: 1.4
+====================================
+Tipo: Cpu
+Sensor: Core #2 (Effective)
+Tipo do Sensor: Clock
+Valor: 0.0
+====================================
+Tipo: Cpu
+Sensor: Core #2 VID
+Tipo do Sensor: Voltage
+Valor: 1.4
+====================================
+Tipo: Cpu
+Sensor: Core #3 (Effective)
+Tipo do Sensor: Clock
+Valor: 0.0
+====================================
+Tipo: Cpu
+Sensor: Core #3 VID
+Tipo do Sensor: Voltage
+Valor: 1.4
+====================================
+Tipo: Cpu
+Sensor: Core #4 (Effective)
+Tipo do Sensor: Clock
+Valor: 0.0
+====================================
+Tipo: Cpu
+Sensor: Core #4 VID
+Tipo do Sensor: Voltage
+Valor: 1.4
+====================================
+Tipo: Cpu
+Sensor: Core (Tctl/Tdie)
+Tipo do Sensor: Temperature
+Valor: 43.8°C
+====================================
+Tipo: Cpu
+Sensor: Core (SVI2 TFN)
+Tipo do Sensor: Voltage
+Valor: 1.4
+====================================
+Tipo: Cpu
+Sensor: Bus Speed
+Tipo do Sensor: Clock
+Valor: 100.0
+====================================
+Tipo: Cpu
+Sensor: TDC
+Tipo do Sensor: Current
+Valor: 9.0
+====================================
+Tipo: Cpu
+Sensor: EDC
+Tipo do Sensor: Current
+Valor: 94.7
+====================================
+Tipo: Cpu
+Sensor: SoC
+Tipo do Sensor: Current
+Valor: 5.9
+====================================
+Tipo: Cpu
+Sensor: SoC
+Tipo do Sensor: Power
+Valor: 6.4 W
+====================================
+Tipo: Cpu
+Sensor: Core #1
+Tipo do Sensor: Temperature
+Valor: 35.8°C
+====================================
+Tipo: Cpu
+Sensor: Core #2
+Tipo do Sensor: Temperature
+Valor: 35.8°C
+====================================
+Tipo: Cpu
+Sensor: Core #3
+Tipo do Sensor: Temperature
+Valor: 35.4°C
+====================================
+Tipo: Cpu
+Sensor: Core #4
+Tipo do Sensor: Temperature
+Valor: 35.8°C
+====================================
+Tipo: Cpu
+Sensor: GFX
+Tipo do Sensor: Voltage
+Valor: 0.8
+====================================
+Tipo: Cpu
+Sensor: GFX
+Tipo do Sensor: Temperature
+Valor: 31.5°C
+====================================
+Tipo: Cpu
+Sensor: GFX
+Tipo do Sensor: Clock
+Valor: 224.5
+====================================
+Tipo: Cpu
+Sensor: GFX
+Tipo do Sensor: Load
+Valor: 4.5%
+====================================
+Tipo: Cpu
+Sensor: Fabric
+Tipo do Sensor: Clock
+Valor: 1333.0
+====================================
+Tipo: Cpu
+Sensor: Uncore
+Tipo do Sensor: Clock
+Valor: 300.0
+====================================
+Tipo: Cpu
+Sensor: Memory
+Tipo do Sensor: Clock
+Valor: 1363.3
+====================================
+Tipo: Cpu
+Sensor: Displays
+Tipo do Sensor: Factor
+Valor: 2.0
+====================================
+Tipo: Memory
+Sensor: tCKAVGmin (Minimum Cycle Time)
+Tipo do Sensor: Timing
+Valor: 0.8
+====================================
+Tipo: Memory
+Sensor: tCKAVGmax (Maximum Cycle Time)
+Tipo do Sensor: Timing
+Valor: 1.6
+====================================
+Tipo: Memory
+Sensor: tAA (CAS Latency Time)
+Tipo do Sensor: Timing
+Valor: 13.8
+====================================
+Tipo: Memory
+Sensor: tRCD (RAS to CAS Delay Time)
+Tipo do Sensor: Timing
+Valor: 13.8
+====================================
+Tipo: Memory
+Sensor: tRP (Row Precharge Delay Time)
+Tipo do Sensor: Timing
+Valor: 13.8
+====================================
+Tipo: Memory
+Sensor: tRAS (Active to Precharge Delay Time)
+Tipo do Sensor: Timing
+Valor: 32.0
+====================================
+Tipo: Memory
+Sensor: tRC (Active to Active/Refresh Delay Time)
+Tipo do Sensor: Timing
+Valor: 45.8
+====================================
+Tipo: Memory
+Sensor: tRFC1 (Refresh Recovery Delay Time)
+Tipo do Sensor: Timing
+Valor: 550.0
+====================================
+Tipo: Memory
+Sensor: tRFC2 (Refresh Recovery Delay Time)
+Tipo do Sensor: Timing
+Valor: 350.0
+====================================
+Tipo: Memory
+Sensor: tRFC4 (Refresh Recovery Delay Time)
+Tipo do Sensor: Timing
+Valor: 260.0
+====================================
+Tipo: Memory
+Sensor: tFAW (Four Activate Window Time)
+Tipo do Sensor: Timing
+Valor: 30.0
+====================================
+Tipo: Memory
+Sensor: tRRD_S (Activate to Activate Delay Time)
+Tipo do Sensor: Timing
+Valor: 5.3
+====================================
+Tipo: Memory
+Sensor: tRRD_L (Activate to Activate Delay Time)
+Tipo do Sensor: Timing
+Valor: 6.4
+====================================
+Tipo: Memory
+Sensor: tCCD_L (CAS to CAS Delay Time)
+Tipo do Sensor: Timing
+Valor: 5.0
+====================================
+Tipo: Memory
+Sensor: tWR (Write Recovery Time)
+Tipo do Sensor: Timing
+Valor: 15.0
+====================================
+Tipo: Memory
+Sensor: tWTR_S (Write to Read Time)
+Tipo do Sensor: Timing
+Valor: 2.5
+====================================
+Tipo: Memory
+Sensor: tWTR_L (Write to Read Time)
+Tipo do Sensor: Timing
+Valor: 7.5
+====================================
+Tipo: Memory
+Sensor: Capacity
+Tipo do Sensor: Data
+Valor: 16.0
+====================================
+Tipo: GpuAmd
+Sensor: GPU Memory Total
+Tipo do Sensor: SmallData
+Valor: 2048.0
+====================================
+Tipo: GpuAmd
+Sensor: Fullscreen FPS
+Tipo do Sensor: Factor
+Valor: -1.0
+====================================
+Tipo: GpuAmd
+Sensor: D3D Dedicated Memory Total
+Tipo do Sensor: SmallData
+Valor: 2032.6
+====================================
+Tipo: GpuAmd
+Sensor: D3D Dedicated Memory Free
+Tipo do Sensor: SmallData
+Valor: 1472.7
+====================================
+Tipo: GpuAmd
+Sensor: D3D Dedicated Memory Used
+Tipo do Sensor: SmallData
+Valor: 559.9
+====================================
+Tipo: GpuAmd
+Sensor: D3D Shared Memory Used
+Tipo do Sensor: SmallData
+Valor: 69.8
+====================================
+Tipo: GpuAmd
+Sensor: D3D Shared Memory Free
+Tipo do Sensor: SmallData
+Valor: 2962.5
+====================================
+Tipo: GpuAmd
+Sensor: D3D Shared Memory Total
+Tipo do Sensor: SmallData
+Valor: 3032.3
+====================================
+Tipo: GpuAmd
+Sensor: D3D 3D
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D High Priority Compute
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Compute 0
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Compute 1
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Video JPEG
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Video Codec 0
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Copy
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Timer 0
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: D3D Security 1
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: GpuAmd
+Sensor: GPU Memory Used
+Tipo do Sensor: SmallData
+Valor: 559.0
+====================================
+Tipo: GpuAmd
+Sensor: GPU Memory Free
+Tipo do Sensor: SmallData
+Valor: 1489.0
+====================================
+Tipo: GpuAmd
+Sensor: GPU Core
+Tipo do Sensor: Clock
+Valor: 200.0
+====================================
+Tipo: GpuAmd
+Sensor: GPU Memory
+Tipo do Sensor: Clock
+Valor: 1333.0
+====================================
+Tipo: GpuAmd
+Sensor: GPU Core
+Tipo do Sensor: Voltage
+Valor: 0.0
+====================================
+Tipo: GpuAmd
+Sensor: GPU Core
+Tipo do Sensor: Load
+Valor: 0.0%
+====================================
+Tipo: Storage
+Sensor: Composite Temperature
+Tipo do Sensor: Temperature
+Valor: 0.0°C
+====================================
+Tipo: Storage
+Sensor: Warning Temperature
+Tipo do Sensor: Temperature
+Valor: 0.0°C
+====================================
+Tipo: Storage
+Sensor: Critical Temperature
+Tipo do Sensor: Temperature
+Valor: 0.0°C
+====================================
+Tipo: Storage
+Sensor: Life
+Tipo do Sensor: Level
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Data Read
+Tipo do Sensor: Data
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Data Written
+Tipo do Sensor: Data
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Power On Count
+Tipo do Sensor: Factor
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Power On Hours
+Tipo do Sensor: Factor
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Total Space
+Tipo do Sensor: Data
+Valor: 256.1
+====================================
+Tipo: Storage
+Sensor: Available Spare
+Tipo do Sensor: Level
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Available Spare Threshold
+Tipo do Sensor: Level
+Valor: 0.0
+====================================
+Tipo: Storage
+Sensor: Percentage Used
+Tipo do Sensor: Level
+Valor: 0.0
+====================================
