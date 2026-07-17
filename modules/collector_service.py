@@ -7,12 +7,7 @@ from modules.hardware_service import HardwareService
 
 def _default_hardware_collector() -> Dict[str, Any]:
     service = HardwareService()
-    payload = service._try_load_via_dotnet_host()
-    if isinstance(payload, dict) and payload:
-        payload.setdefault("collected_at", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-        return payload
-
-    payload = service._collect_raw_payload()
+    payload = service.collect()
     if isinstance(payload, dict) and payload:
         payload.setdefault("collected_at", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
         return payload

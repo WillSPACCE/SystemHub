@@ -1,7 +1,8 @@
 import os
-import tempfile
 
 from modules.cleaner import CleanupManager
+from modules.email_service import ResendEmailService
+from modules.maintenance import MaintenanceCoordinator
 from modules.report import ReportGenerator
 
 
@@ -27,3 +28,65 @@ def test_report_generator_writes_txt_report(tmp_path):
 
     assert os.path.exists(report_path)
     assert "INFOCASE CHECKUP" in open(report_path, encoding="utf-8").read()
+
+
+def test_email_service_builds_payload_for_resend(tmp_path):
+    attachment_path = tmp_path / "report.txt"
+    attachment_path.write_text("teste", encoding="utf-8")
+    service = ResendEmailService(api_key="test-key", from_email="sender@example.com")
+
+    payload = service._build_payload("dest@example.com", "Assunto", "Mensagem", str(attachment_path))
+
+    assert payload["from"] == "sender@example.com"
+    assert payload["to"] == ["dest@example.com"]
+    assert payload["subject"] == "Assunto"
+    assert payload["text"] == "Mensagem"
+    assert payload["attachments"][0]["filename"] == "report.txt"
+
+
+def test_run_maintenance_uses_sender_from_settings(tmp_path):
+    class DummyCleaner:
+        def run_cleanup(self, selected_ids=None, progress_callback=None):
+            return []
+
+        def get_default_actions(self):
+            return []
+
+    class DummyReportGenerator:
+        def write_report(self, **kwargs):
+            report_path = tmp_path / "report.txt"
+            report_path.write_text("report", encoding="utf-8")
+            return str(report_path)
+
+    class DummyHistoryManager:
+        def __init__(self):
+            self.records = []
+
+        def append(self, record):
+            self.records.append(record)
+
+    class DummyEmailService:
+        def __init__(self):
+            self.api_key = None
+            self.from_email = "default@example.com"
+            self.calls = []
+
+        def send_report(self, recipient_email, subject, body, attachment_path):
+            self.calls.append({"recipient_email": recipient_email, "subject": subject, "body": body, "attachment_path": attachment_path})
+
+    coordinator = MaintenanceCoordinator(
+        cleaner=DummyCleaner(),
+        report_generator=DummyReportGenerator(),
+        history_manager=DummyHistoryManager(),
+        email_service=DummyEmailService(),
+    )
+
+    coordinator.run_maintenance(
+        selected_ids=[],
+        initial_payload={"system": {"computer_name": "PC-TEST"}},
+        final_payload={"system": {"computer_name": "PC-TEST"}},
+        settings={"auto_send": True, "recipient_email": "dest@example.com", "resend_api_key": "test-key", "from_email": "sender@example.com"},
+    )
+
+    assert coordinator.email_service.from_email == "sender@example.com"
+    assert coordinator.email_service.calls[0]["recipient_email"] == "dest@example.com"

@@ -6,12 +6,15 @@ import json
 import os
 import sys
 import time
+import re
 
 from modules.firewall import FirewallManager
 from modules.cleanup import CleanupManager
 from modules.collector_service import HardwareCollectorService
 from modules.hardware_service import HardwareService
+from modules.programs_service import InstalledProgramsService
 from modules.maintenance import MaintenanceCoordinator
+from modules.report import ReportGenerator, format_brazilian_date, get_latest_report_path
 from modules.settings import ReportSettingsManager
 
 
@@ -64,6 +67,32 @@ def configure_tk_environment():
 
 
 configure_tk_environment()
+
+
+def bind_mouse_wheel_to_canvas(widget, target_canvas=None):
+    """Vincula a roda do mouse a um canvas para rolagem suave."""
+    if widget is None:
+        return
+
+    def _on_scroll(event):
+        try:
+            target = target_canvas or widget
+            if not hasattr(target, "yview_scroll"):
+                return
+            if hasattr(event, "delta") and event.delta:
+                units = int(-event.delta / 120)
+            elif hasattr(event, "num"):
+                units = -1 if event.num == 5 else 1
+            else:
+                units = 0
+            if units != 0:
+                target.yview_scroll(units, "units")
+        except Exception:
+            pass
+
+    widget.bind("<MouseWheel>", _on_scroll)
+    widget.bind("<Button-4>", _on_scroll)
+    widget.bind("<Button-5>", _on_scroll)
 
 
 class Tooltip:
@@ -232,15 +261,16 @@ class RoundedCard(tk.Canvas):
 
 class ProgressBar(tk.Canvas):
     def __init__(self, parent, width: int = 280, height: int = 8, value: float = 0.0, color: str = THEME["accent_blue"], show_text: bool = True):
-        super().__init__(parent, width=width, height=height, bg=THEME['bg'], bd=0, highlightthickness=0)
+        adjusted_height = max(height, 18) if show_text else max(height, 8)
+        super().__init__(parent, width=width, height=adjusted_height, bg=THEME['bg'], bd=0, highlightthickness=0)
         self.width = width
-        self.height = height
+        self.height = adjusted_height
         self.color = color
         self.show_text = show_text
         self._value = 0.0
-        self.bg_rect = self._create_rounded_rectangle(0, 0, width, height, radius=height // 2, fill=THEME['muted'], outline="")
-        self.fill_rect = self._create_rounded_rectangle(0, 0, 0, height, radius=height // 2, fill=color, outline="")
-        self.text = self.create_text(width - 10, height // 2, anchor="e", text="0%", fill=THEME['text_primary'], font=("Segoe UI", 9, "bold"))
+        self.bg_rect = self._create_rounded_rectangle(0, 0, width, self.height, radius=self.height // 2, fill=THEME['muted'], outline="")
+        self.fill_rect = self._create_rounded_rectangle(0, 0, 0, self.height, radius=self.height // 2, fill=color, outline="")
+        self.text = self.create_text(width // 2, self.height // 2, anchor="center", text="0%", fill=THEME['text_primary'], font=("Segoe UI", 9, "bold"))
         self.set_value(value)
 
     def _create_rounded_rectangle(self, x1, y1, x2, y2, radius=8, **kwargs):
@@ -282,7 +312,7 @@ class ProgressBar(tk.Canvas):
             self.height = height
         self.config(width=self.width, height=self.height)
         self.coords(self.bg_rect, *self._rounded_coords(0, 0, self.width, self.height, radius=max(2, self.height // 2)))
-        self.coords(self.text, self.width - 10, self.height // 2)
+        self.coords(self.text, self.width // 2, self.height // 2)
         self.set_value(self._value)
 
     def _rounded_coords(self, x1, y1, x2, y2, radius=8):
@@ -352,6 +382,10 @@ class App(tk.Tk):
         self.maintenance_coordinator = MaintenanceCoordinator()
         self.report_settings_manager = ReportSettingsManager()
         self._report_settings = self.report_settings_manager.load()
+        self.program_filter_terms = self._report_settings.get('program_filter', []) if isinstance(self._report_settings.get('program_filter', []), list) else []
+        self.installed_programs = []
+        self.selected_programs_for_report = []
+        self.maintenance_coordinator.email_service.save_config(self._report_settings)
 
         try:
             self._configure_styles()
@@ -441,6 +475,7 @@ class App(tk.Tk):
             ("Limpeza", "🧹", "Limpeza", "Limpar arquivos temporários"),
             ("Ferramentas", "🧰", "Ferramentas", "Ferramentas utilitárias"),
             ("Configurações", "⚙", "Configurações", "Ajustes do aplicativo"),
+            ("Email", "✉", "E-mail", "Configurar envio de relatórios por e-mail"),
         ]
         for key, icon, label, tip in nav_items:
             self._create_nav_button(key, icon, label, tip)
@@ -600,8 +635,10 @@ class App(tk.Tk):
         self.pages["Dashboard"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Informações"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Firewall"] = tk.Frame(self.page_container, bg=THEME['bg'])
+        self.pages["Aplicativos"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Limpeza"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Configurações"] = tk.Frame(self.page_container, bg=THEME['bg'])
+        self.pages["Email"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Regras"] = tk.Frame(self.page_container, bg=THEME['bg'])
 
         for page in self.pages.values():
@@ -612,9 +649,11 @@ class App(tk.Tk):
         self._build_dashboard_page()
         self._build_info_page()
         self._build_firewall_page()
+        self._build_programs_page()
         self._build_rules_page()
         self._build_cleanup_page()
         self._build_settings_page()
+        self._build_email_settings_page()
 
     def _on_page_inner_configure(self, event=None):
         self.page_canvas.configure(scrollregion=self.page_canvas.bbox("all"))
@@ -1009,46 +1048,125 @@ class App(tk.Tk):
             if hasattr(self, 'firewall_output'):
                 self.firewall_output.insert(tk.END, f'Erro exportando: {exc}\n')
 
+    def _create_action_button(self, parent, text, command, bg=THEME['accent_blue'], fg=THEME['tooltip_fg'], activebg=None, padx=16, pady=10, font=None):
+        return tk.Button(
+            parent,
+            text=text,
+            bg=bg,
+            fg=fg,
+            activebackground=activebg or bg,
+            activeforeground=fg,
+            bd=0,
+            relief="flat",
+            padx=padx,
+            pady=pady,
+            cursor="hand2",
+            highlightthickness=0,
+            font=font or self._font(10, min_size=9, max_size=12, weight="bold"),
+            command=command,
+        )
+
+    def _create_page_header(self, parent, title, subtitle, accent=THEME['accent_blue']):
+        header_card = tk.Frame(
+            parent,
+            bg=THEME['card_bg'],
+            highlightbackground=THEME['shadow_hover'],
+            highlightthickness=1,
+            bd=0,
+            padx=18,
+            pady=16,
+        )
+        header_card.pack(fill='x', padx=24, pady=(12, 12))
+        tk.Label(header_card, text='●', bg=THEME['card_bg'], fg=accent, font=self._font(13, min_size=12, max_size=15, weight='bold')).pack(anchor='w')
+        tk.Label(header_card, text=title, bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(15, min_size=13, max_size=18, weight='bold'), anchor='w').pack(anchor='w', pady=(4, 2))
+        tk.Label(header_card, text=subtitle, bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor='w', wraplength=920, justify='left').pack(anchor='w')
+        return header_card
+
+    def _create_input_field(self, parent, textvariable, show=None):
+        return tk.Entry(
+            parent,
+            textvariable=textvariable,
+            bg=THEME['card_bg'],
+            fg=THEME['text_primary'],
+            bd=1,
+            relief='solid',
+            highlightthickness=1,
+            highlightbackground=THEME['shadow_hover'],
+            highlightcolor=THEME['accent_blue'],
+            insertbackground=THEME['accent_blue'],
+            font=self._font(10, min_size=9, max_size=12),
+            show=show,
+        )
+
     def _build_cleanup_page(self):
         page = self.pages["Limpeza"]
-        header = tk.Label(page, text="Central de Manutenção", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(16, min_size=14, max_size=20, weight="bold"), wraplength=720, justify="left")
-        header.pack(anchor="nw", pady=(12, 8), padx=24)
-        sub = tk.Label(page, text="Execute uma manutenção completa com checklist em tempo real, relatório automático e envio opcional por e-mail.", bg=THEME["bg"], fg=THEME['text_secondary'], font=self._font(11, min_size=10, max_size=13), wraplength=720, justify="left")
-        sub.pack(anchor="nw", padx=24)
+        self._create_page_header(page, "Central de manutenção", "Execute uma manutenção completa com checklist em tempo real, relatório automático e envio opcional por e-mail.", accent=THEME['accent_blue'])
 
         controls = tk.Frame(page, bg=THEME["bg"])
-        controls.pack(fill="x", padx=24, pady=16)
-        self.cleanup_start_button = tk.Button(controls, text="Iniciar Manutenção", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self.run_cleanup)
+        controls.pack(fill="x", padx=24, pady=(4, 16))
+        self.cleanup_start_button = self._create_action_button(controls, "Iniciar Manutenção", self.run_cleanup, bg=THEME['accent_blue'])
         self.cleanup_start_button.pack(side="left")
-        self.cleanup_reports_button = tk.Button(controls, text="Abrir Pasta de Relatórios", bg=THEME['accent_green'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self._open_reports_folder)
+        self.cleanup_reports_button = self._create_action_button(controls, "Abrir Pasta de Relatórios", self._open_reports_folder, bg=THEME['accent_green'])
         self.cleanup_reports_button.pack(side="left", padx=8)
-        self.cleanup_test_button = tk.Button(controls, text="Testar Envio", bg=THEME['accent_orange'], fg=THEME["tooltip_fg"], activebackground=THEME['button_hover_bg'], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self._test_report_delivery)
-        self.cleanup_test_button.pack(side="left", padx=8)
+        self.cleanup_send_button = self._create_action_button(controls, "Enviar último relatório por e-mail", self._send_last_report, bg=THEME['accent_purple'])
+        self.cleanup_send_button.pack(side="left", padx=8)
 
-        summary_frame = tk.Frame(page, bg=THEME["bg"])
-        summary_frame.pack(fill="x", padx=24, pady=(0, 8))
-        self.cleanup_summary = tk.Label(summary_frame, text="Estimativa de espaço recuperável: 0 B", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12), anchor="w")
+        summary_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=18, pady=18)
+        summary_card.pack(fill="x", padx=24, pady=(0, 12))
+        tk.Label(summary_card, text="Resumo da limpeza", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(12, min_size=11, max_size=14, weight="bold"), anchor="w").pack(anchor="w", pady=(0, 6))
+        tk.Label(summary_card, text="Acompanhe o progresso geral e o espaço estimado recuperável antes de iniciar.", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor="w", wraplength=980, justify="left").pack(anchor="w", pady=(0, 10))
+        self.cleanup_summary = tk.Label(summary_card, text="Selecionados: 0 • Recuperável: 0 B", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12), anchor="w")
         self.cleanup_summary.pack(anchor="w")
-        self.cleanup_progress = ttk.Progressbar(summary_frame, orient="horizontal", length=420, mode="determinate")
-        self.cleanup_progress.pack(anchor="w", pady=(6, 0))
-        self.cleanup_progress_label = tk.Label(summary_frame, text="0%", bg=THEME["bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12))
-        self.cleanup_progress_label.pack(anchor="w")
+        self.cleanup_progress = ttk.Progressbar(summary_card, orient="horizontal", length=520, mode="determinate")
+        self.cleanup_progress.pack(anchor="w", fill="x", pady=(12, 0), padx=(0, 40))
+        self.cleanup_progress_label = tk.Label(summary_card, text="0%", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12))
+        self.cleanup_progress_label.pack(anchor="w", pady=(8, 0))
 
-        options_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow'], highlightthickness=1)
+        options_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0)
         options_card.pack(fill="x", padx=24, pady=(0, 12))
-        tk.Label(options_card, text="Itens selecionados para limpeza", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"), anchor="w").pack(anchor="w", padx=16, pady=(12, 6))
+        tk.Label(options_card, text="Selecione os itens a limpar", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"), anchor="w").pack(anchor="w", padx=16, pady=(12, 4))
+        tk.Label(options_card, text="Cada item mostra o seu progresso individual e o espaço recuperado após a limpeza.", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor="w", wraplength=980, justify="left").pack(anchor="w", padx=16, pady=(0, 10))
         self.cleanup_options_frame = tk.Frame(options_card, bg=THEME['card_bg'])
-        self.cleanup_options_frame.pack(fill="x", padx=16, pady=(0, 12))
+        self.cleanup_options_frame.pack(fill="x", padx=16, pady=(0, 16))
 
         self.cleanup_action_vars = {}
+        self.cleanup_option_cards = {}
+        self.cleanup_option_bars = {}
+        self.cleanup_option_result_labels = {}
         for action in self.maintenance_coordinator.get_action_labels():
             var = tk.BooleanVar(value=True)
             self.cleanup_action_vars[action['id']] = var
-            row = tk.Frame(self.cleanup_options_frame, bg=THEME['card_bg'])
-            row.pack(fill="x", pady=3)
-            tk.Checkbutton(row, text=action['name'], variable=var, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_green'], command=self._refresh_cleanup_estimate).pack(anchor="w")
+            row = tk.Frame(self.cleanup_options_frame, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=14, pady=12)
+            row.pack(fill="x", pady=8)
+            row.bind("<Button-1>", lambda event, var=var: var.set(not var.get()))
 
-        checklist_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow'], highlightthickness=1)
+            check_frame = tk.Frame(row, bg=THEME['card_bg'])
+            check_frame.pack(side="left", padx=(0, 12), anchor="n")
+            check = tk.Checkbutton(check_frame, variable=var, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_blue'], command=self._refresh_cleanup_estimate, bd=0, highlightthickness=0, width=1, padx=0, pady=0)
+            check.pack(anchor="center")
+
+            content = tk.Frame(row, bg=THEME['card_bg'])
+            content.pack(side="left", fill="x", expand=True)
+            label = tk.Label(content, text=action['name'], bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold"), anchor="w")
+            label.pack(anchor="w")
+            description = action.get('description') or action.get('label') or 'Item disponível para limpeza'
+            description_label = tk.Label(content, text=description, bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=10), anchor="w", wraplength=520, justify="left")
+            description_label.pack(anchor="w", pady=(2, 0))
+
+            bar_frame = tk.Frame(row, bg=THEME['card_bg'], width=220)
+            bar_frame.pack(side="right", padx=(12, 0), anchor="n")
+            bar_frame.pack_propagate(False)
+            bar = ProgressBar(bar_frame, width=220, height=8, value=0.0, color=THEME['accent_blue'])
+            bar.pack(fill="x", pady=(6, 0))
+            result_label = tk.Label(bar_frame, text="0 B", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=10), anchor="e")
+            result_label.pack(anchor="e", pady=(4, 0))
+
+            self.cleanup_option_cards[action['id']] = row
+            self.cleanup_option_bars[action['id']] = bar
+            self.cleanup_option_result_labels[action['id']] = result_label
+            var.trace_add("write", lambda *_args, action_id=action['id']: self._refresh_cleanup_option_cards())
+
+        checklist_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0)
         checklist_card.pack(fill="x", padx=24, pady=(0, 12))
         tk.Label(checklist_card, text="Checklist da manutenção", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"), anchor="w").pack(anchor="w", padx=16, pady=(12, 6))
         self.cleanup_checklist_frame = tk.Frame(checklist_card, bg=THEME['card_bg'])
@@ -1059,10 +1177,413 @@ class App(tk.Tk):
             label.pack(anchor="w", pady=2)
             self.cleanup_step_labels[step_name] = label
 
-        self.cleanup_output = tk.Text(page, wrap="word", height=14, bg=THEME["card_bg"], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
-        self.cleanup_output.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+        output_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0)
+        output_card.pack(fill="both", expand=True, padx=24, pady=(0, 24))
+        self.cleanup_output = tk.Text(output_card, wrap="word", height=14, bg=THEME["card_bg"], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
+        self.cleanup_output.pack(fill="both", expand=True, padx=14, pady=14)
         self._reset_cleanup_ui()
         self._refresh_cleanup_estimate()
+
+    def _build_programs_page(self):
+        page = self.pages["Aplicativos"]
+        self._create_page_header(page, "Aplicativos instalados", "Selecione programas para incluir no próximo relatório. Clique com botão direito para desinstalar ou abrir local.", accent=THEME['accent_blue'])
+
+        filter_frame = tk.Frame(page, bg=THEME["card_bg"], highlightbackground=THEME["shadow_hover"], highlightthickness=1, bd=0)
+        filter_frame.pack(fill="x", padx=24, pady=(4, 8))
+        filter_inner = tk.Frame(filter_frame, bg=THEME["card_bg"])
+        filter_inner.pack(fill="x", padx=14, pady=12)
+
+        tk.Label(filter_inner, text="Buscar:", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(side="left", padx=(0, 8))
+        self.programs_filter_var = tk.StringVar()
+        filter_entry = self._create_input_field(filter_inner, self.programs_filter_var)
+        filter_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        filter_entry.bind("<KeyRelease>", lambda _event: self._apply_programs_filter())
+        filter_entry.bind("<Return>", lambda _event: self._apply_programs_filter())
+        self.programs_filter_btn = self._create_action_button(filter_inner, "🔍 Buscar", self._apply_programs_filter, bg=THEME['accent_blue'], padx=12, pady=6)
+        self.programs_filter_btn.pack(side="left", padx=(0, 8))
+
+        self.programs_filter_enabled = False
+        self.programs_filter_toggle_btn = self._create_action_button(
+            filter_inner,
+            "🔧 Mostrar Drivers/Serviços",
+            self._toggle_driver_filter,
+            bg=THEME['accent_orange'],
+            padx=12,
+            pady=6,
+        )
+        self.programs_filter_toggle_btn.pack(side="left", padx=(0, 8))
+
+        self.programs_count_var = tk.StringVar(value="")
+        self.programs_count_label = tk.Label(filter_inner, textvariable=self.programs_count_var, bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=11))
+        self.programs_count_label.pack(side="left", padx=(0, 0))
+
+        programs_panel = tk.Frame(page, bg=THEME["card_bg"], highlightbackground=THEME["shadow_hover"], highlightthickness=1, bd=0)
+        programs_panel.pack(fill="both", expand=True, padx=24, pady=(8, 16))
+        canvas_frame = tk.Frame(programs_panel, bg=THEME["card_bg"])
+        canvas_frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        canvas = tk.Canvas(canvas_frame, bg=THEME["card_bg"], bd=0, highlightthickness=0, relief="flat")
+        scrollbar = ttk.Scrollbar(canvas_frame, style="Vertical.TScrollbar", orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=THEME["card_bg"])
+        scrollable_frame.bind("<Configure>", lambda e: self._refresh_programs_scrollregion())
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        self.programs_checkboxes_frame = scrollable_frame
+        self.programs_canvas = canvas
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        bind_mouse_wheel_to_canvas(canvas, canvas)
+        bind_mouse_wheel_to_canvas(scrollable_frame, canvas)
+
+        # Seção de programas selecionados
+        selected_label = tk.Label(page, text="Programas selecionados para relatório:", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"))
+        selected_label.pack(anchor="w", padx=24, pady=(8, 4))
+
+        selected_box = tk.Frame(page, bg=THEME["card_bg"], highlightbackground=THEME["shadow_hover"], highlightthickness=1, bd=0)
+        selected_box.pack(fill="x", padx=24, pady=(0, 16))
+        self.selected_programs_output = tk.Text(selected_box, wrap="word", height=4, bg=THEME["card_bg"], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
+        self.selected_programs_output.pack(fill="x", padx=12, pady=12)
+
+        clear_btn = self._create_action_button(page, "Limpar Seleção", self._clear_selected_programs, bg=THEME['accent_orange'], padx=12, pady=8)
+        clear_btn.pack(anchor="e", padx=24, pady=(0, 24))
+
+        self._load_installed_programs()
+
+    def _is_windows_driver_or_service(self, program_name: str) -> bool:
+        """Verifica se o programa é um driver ou serviço do Windows."""
+        name_lower = program_name.lower()
+        
+        # Padrões que indicam drivers ou serviços do Windows
+        exclude_patterns = [
+            # Drivers
+            "driver", "nvidia", "amd", "intel", "atheros", "realtek", "broadcom",
+            "qualcomm", "marvell", "chipset", "gpu", "graphics", "audio",
+            ".sys", ".dll", "device", "firmware",
+            
+            # Serviços e componentes do Windows
+            "windows", "microsoft", "defender", "update", "telemetry",
+            "cortana", "surface", "xbox", "onedriver", "onedrive",
+            "sync", "service pack", "hotfix", "kb", "patch",
+            ".net", "framework", "runtime", "redistributable",
+            
+            # Ferramentas do sistema
+            "service", "system", "kernel", "library", "runtime",
+            "redistributable", "vcredist", "runtime", "dotnet",
+            
+            # Filtros adicionais
+            "(service", "[service", "service)", "system32",
+            "winsys", "windowsupdate", "updates",
+        ]
+        
+        for pattern in exclude_patterns:
+            if pattern in name_lower:
+                return True
+        
+        return False
+
+    def _refresh_programs_scrollregion(self):
+        if hasattr(self, 'programs_canvas') and self.programs_canvas.winfo_exists():
+            try:
+                self.programs_canvas.configure(scrollregion=self.programs_canvas.bbox("all"))
+            except Exception:
+                pass
+
+    def _load_installed_programs(self):
+        """Carrega e exibe os programas instalados (todos ou filtrados)."""
+        try:
+            all_programs = InstalledProgramsService.get_installed_programs()
+            
+            # Armazenar ambas as listas
+            self.all_programs = all_programs
+            
+            if self.programs_filter_enabled:
+                self.installed_programs = [
+                    p for p in all_programs 
+                    if not self._is_windows_driver_or_service(p.get("name", ""))
+                ]
+            else:
+                self.installed_programs = all_programs
+            
+            # Atualizar contador
+            if hasattr(self, 'programs_count_var'):
+                if self.programs_filter_enabled:
+                    self.programs_count_var.set(f"{len(self.installed_programs)} de {len(all_programs)}")
+                else:
+                    self.programs_count_var.set(f"{len(self.installed_programs)} programa(s)")
+            
+            self._display_programs(self.installed_programs)
+        except Exception as exc:
+            if hasattr(self, 'selected_programs_output'):
+                self.selected_programs_output.delete("1.0", tk.END)
+                self.selected_programs_output.insert(tk.END, f"Erro ao carregar programas: {exc}\n")
+
+    def _toggle_driver_filter(self):
+        """Alterna o filtro de drivers/serviços."""
+        self.programs_filter_enabled = not self.programs_filter_enabled
+        
+        # Atualizar texto do botão
+        if self.programs_filter_enabled:
+            self.programs_filter_toggle_btn.config(text="✓ Drivers/Serviços Ocultos")
+        else:
+            self.programs_filter_toggle_btn.config(text="🔧 Mostrar Drivers/Serviços")
+        
+        # Recarregar programas
+        self._load_installed_programs()
+
+    def _display_programs(self, programs):
+        """Exibe uma lista de programas com checkboxes em cards melhorados e menu de contexto."""
+        # Limpar frame anterior
+        for widget in self.programs_checkboxes_frame.winfo_children():
+            widget.destroy()
+        
+        if not programs:
+            empty_label = tk.Label(
+                self.programs_checkboxes_frame, 
+                text="Nenhum programa encontrado", 
+                bg=THEME["bg"], 
+                fg=THEME['text_secondary'], 
+                font=self._font(11, min_size=10, max_size=13)
+            )
+            empty_label.pack(pady=20)
+            return
+        
+        # Criar checkboxes para cada programa
+        self.programs_vars = {}
+        self.programs_data = {}
+        
+        for idx, program in enumerate(programs):
+            name = program.get("name", "")
+            version = program.get("version", "")
+            uninstall_string = program.get("uninstall_string", "")
+            install_location = program.get("install_location", "")
+            
+            if not name:
+                continue
+            
+            var = tk.BooleanVar(value=name in self.selected_programs_for_report)
+            self.programs_vars[name] = var
+            self.programs_data[name] = {
+                "uninstall_string": uninstall_string,
+                "install_location": install_location
+            }
+            
+            # Criar card para programa com design melhorado e destaque azul sutil
+            prog_frame = tk.Frame(self.programs_checkboxes_frame, bg=THEME["card_bg"], highlightbackground=THEME["shadow_hover"], highlightthickness=1, bd=0)
+            prog_frame.pack(fill="x", pady=4, padx=2)
+            accent_bar = tk.Frame(prog_frame, bg=THEME['accent_blue'], width=3)
+            accent_bar.pack(side="left", fill="y")
+            accent_bar.pack_propagate(False)
+            
+            # Frame interno com padding
+            inner_frame = tk.Frame(prog_frame, bg=THEME["card_bg"])
+            inner_frame.pack(fill="x", padx=(10, 12), pady=8)
+            
+            # Checkbox
+            chk = tk.Checkbutton(
+                inner_frame, 
+                text="", 
+                variable=var, 
+                bg=THEME["card_bg"], 
+                fg=THEME['text_primary'],
+                bd=0, 
+                highlightthickness=0,
+                activebackground=THEME["card_bg"],
+                activeforeground=THEME['accent_blue'],
+                selectcolor=THEME['accent_blue'],
+                command=lambda program_name=name, program_var=var: self._toggle_program_selection(program_name, program_var)
+            )
+            chk.pack(side="left", padx=(0, 8))
+            
+            # Frame com informações do programa
+            info_frame = tk.Frame(inner_frame, bg=THEME["card_bg"])
+            info_frame.pack(side="left", fill="x", expand=True)
+            
+            # Nome do programa (mais escuro, peso bold)
+            name_label = tk.Label(
+                info_frame, 
+                text=name, 
+                bg=THEME["card_bg"], 
+                fg=THEME['text_primary'], 
+                font=self._font(10, min_size=9, max_size=12, weight="bold"),
+                justify="left",
+                wraplength=580
+            )
+            name_label.pack(anchor="w", pady=(0, 2))
+            
+            # Versão (texto menor e cinza)
+            if version and version.strip():
+                version_label = tk.Label(
+                    info_frame, 
+                    text=f"v{version}", 
+                    bg=THEME["card_bg"], 
+                    fg=THEME['text_secondary'], 
+                    font=self._font(9, min_size=8, max_size=10)
+                )
+                version_label.pack(anchor="w", pady=(0, 0))
+            
+            # Dica de clique direito
+            hint_label = tk.Label(
+                info_frame, 
+                text="(clique para adicionar ao relatório • clique direito para opções)", 
+                bg=THEME["card_bg"], 
+                fg="#999999", 
+                font=self._font(8, min_size=7, max_size=9)
+            )
+            hint_label.pack(anchor="w", pady=(2, 0))
+            
+            def on_program_click(event, prog_name=name, program_var=var):
+                if event.widget is chk:
+                    return
+                self._toggle_program_selection(prog_name, program_var)
+
+            def on_right_click(event, prog_name=name):
+                self._show_program_context_menu(event, prog_name)
+            
+            name_label.bind("<Button-1>", on_program_click)
+            if version and version.strip():
+                version_label.bind("<Button-1>", on_program_click)
+            hint_label.bind("<Button-1>", on_program_click)
+            prog_frame.bind("<Button-1>", on_program_click)
+            inner_frame.bind("<Button-1>", on_program_click)
+            info_frame.bind("<Button-1>", on_program_click)
+
+            name_label.bind("<Button-3>", on_right_click)
+            if version and version.strip():
+                version_label.bind("<Button-3>", on_right_click)
+            hint_label.bind("<Button-3>", on_right_click)
+            prog_frame.bind("<Button-3>", on_right_click)
+            inner_frame.bind("<Button-3>", on_right_click)
+            info_frame.bind("<Button-3>", on_right_click)
+            
+            # Adicionar borda sutil ao card
+            border_frame = tk.Frame(prog_frame, bg=THEME["shadow_hover"], height=1)
+            border_frame.pack(fill="x", side="bottom")
+            border_frame.pack_propagate(False)
+
+        self.after_idle(self._refresh_programs_scrollregion)
+
+    def _show_program_context_menu(self, event, program_name: str):
+        """Mostra menu de contexto com opções de desinstalar e abrir local."""
+        if program_name not in self.programs_data:
+            return
+        
+        menu = tk.Menu(self, tearoff=0, bg=THEME["card_bg"], fg=THEME["text_primary"], relief="flat", bd=0)
+        
+        prog_info = self.programs_data[program_name]
+        uninstall_string = prog_info.get("uninstall_string", "")
+        install_location = prog_info.get("install_location", "")
+        
+        # Opção de desinstalar
+        if uninstall_string:
+            menu.add_command(
+                label="🗑 Desinstalar",
+                command=lambda: self._uninstall_program(program_name, uninstall_string)
+            )
+        else:
+            menu.add_command(label="🗑 Desinstalar (não disponível)", state="disabled")
+        
+        # Opção de abrir local
+        if install_location:
+            menu.add_command(
+                label="📂 Abrir Local de Instalação",
+                command=lambda: self._open_program_location(program_name, install_location)
+            )
+        else:
+            menu.add_command(label="📂 Abrir Local (não disponível)", state="disabled")
+        
+        # Separador
+        menu.add_separator()
+        
+        # Copiar nome
+        menu.add_command(
+            label="📋 Copiar Nome",
+            command=lambda: self._copy_to_clipboard(program_name)
+        )
+        
+        # Mostrar menu
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.after_idle(menu.destroy)
+
+    def _uninstall_program(self, program_name: str, uninstall_string: str):
+        """Tenta desinstalar um programa."""
+        result = InstalledProgramsService.uninstall_program(program_name, uninstall_string)
+        
+        if result:
+            self._append_cleanup_log(f"✓ Iniciando desinstalação de {program_name}...")
+            self._append_cleanup_log(f"   Verifique a janela do instalador que será aberta.")
+        else:
+            self._append_cleanup_log(f"❌ Não foi possível desinstalar {program_name}.")
+
+    def _open_program_location(self, program_name: str, install_location: str):
+        """Abre a pasta de instalação do programa."""
+        result = InstalledProgramsService.open_install_location(install_location)
+        
+        if result:
+            pass  # Window Explorer já abriu
+        else:
+            if hasattr(self, 'selected_programs_output'):
+                self._append_cleanup_log(f"❌ Não foi possível abrir a pasta de {program_name}.")
+
+    def _copy_to_clipboard(self, text: str):
+        """Copia texto para a área de transferência."""
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(text)
+            self.update()
+        except Exception:
+            pass
+
+    def _apply_programs_filter(self):
+        """Aplica filtro aos programas e atualiza contador."""
+        if not hasattr(self, 'programs_filter_var') or not hasattr(self, 'programs_count_var'):
+            return
+        filter_text = self.programs_filter_var.get().strip().lower()
+        if not filter_text:
+            filtered = self.installed_programs
+        else:
+            filtered = [p for p in self.installed_programs if filter_text in p.get("name", "").lower()]
+        
+        count_text = f"{len(filtered)} programa(s)"
+        if filter_text:
+            count_text += f" (de {len(self.installed_programs)})"
+        self.programs_count_var.set(count_text)
+        
+        self._display_programs(filtered)
+
+    def _toggle_program_selection(self, program_name: str, variable=None):
+        """Alterna a seleção de um programa e atualiza a lista do relatório."""
+        if not hasattr(self, 'programs_vars') or program_name not in self.programs_vars:
+            return
+        target_var = variable or self.programs_vars[program_name]
+        target_var.set(not target_var.get())
+        self._update_selected_programs()
+
+    def _update_selected_programs(self):
+        """Atualiza a lista de programas selecionados e exibe."""
+        self.selected_programs_for_report = [name for name, var in self.programs_vars.items() if var.get()]
+        self.selected_programs_output.delete("1.0", tk.END)
+        
+        if self.selected_programs_for_report:
+            # Mostrar com numeração e formatação melhorada
+            content = f"✓ {len(self.selected_programs_for_report)} programa(s) selecionado(s):\n\n"
+            for i, prog in enumerate(self.selected_programs_for_report, 1):
+                content += f"{i}. {prog}\n"
+            self.selected_programs_output.insert(tk.END, content)
+        else:
+            self.selected_programs_output.insert(tk.END, "➜ Nenhum programa selecionado")
+        
+        # Salvar seleção em report_settings para persistência
+        self._report_settings['program_filter'] = self.selected_programs_for_report
+        self.report_settings_manager.save(self._report_settings)
+
+    def _clear_selected_programs(self):
+        """Limpa a seleção de programas."""
+        for var in self.programs_vars.values():
+            var.set(False)
+        self._update_selected_programs()
 
     def _build_settings_page(self):
         page = self.pages["Configurações"]
@@ -1080,23 +1601,212 @@ class App(tk.Tk):
 
         reports_card = RoundedCard(page, "Relatórios", "#0F766E", width=1060, height=220)
         reports_card.pack(padx=24, pady=(0, 16), fill="x")
-        tk.Label(reports_card.inner_frame, text="Envio automático por Resend", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=(4, 6))
+        tk.Label(reports_card.inner_frame, text="Configuração de envio de e-mail", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(12, min_size=10, max_size=14, weight="bold")).pack(anchor="w", pady=(8, 4))
+        tk.Label(reports_card.inner_frame, text="Ajuste API principal e reserva, destinatário, remetente, assunto, corpo do e-mail e o comportamento de reenvio quando houver falha.", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=980, justify="left").pack(anchor="w", pady=(0, 10))
+        action_row = tk.Frame(reports_card.inner_frame, bg=THEME['card_bg'])
+        action_row.pack(fill="x", pady=(4, 0))
+        tk.Button(action_row, text="Configurar e-mail", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=14, pady=9, cursor="hand2", command=lambda: self.show_page("Email")).pack(side="left")
+        tk.Label(action_row, text="A página de e-mail abre diretamente aqui para edição rápida.", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=620, justify="left").pack(side="left", padx=(12, 0))
+
+    def _build_email_settings_page(self):
+        page = self.pages["Email"]
+        self._create_page_header(page, "Relatórios por e-mail", "Configure o envio profissional de relatórios via API Resend, personalize o texto do e-mail, defina uma API reserva e guarde relatórios para envio posterior se necessário.", accent=THEME['accent_blue'])
+
         self.report_auto_send = tk.BooleanVar(value=bool(self._report_settings.get('auto_send', False)))
-        self.report_recipient = tk.StringVar(value=self._report_settings.get('recipient_email', 'martins.willyan20@gmail.com'))
+        self.report_recipient = tk.StringVar(value=self._report_settings.get('recipient_email', ''))
         self.report_api_key = tk.StringVar(value=self._report_settings.get('resend_api_key', ''))
-        tk.Checkbutton(reports_card.inner_frame, text="Enviar automaticamente", variable=self.report_auto_send, bg=THEME['card_bg'], fg=THEME['text_primary']).pack(anchor="w", pady=4)
-        tk.Label(reports_card.inner_frame, text="Email destinatário", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
-        tk.Entry(reports_card.inner_frame, textvariable=self.report_recipient, bg=THEME['card_bg'], fg=THEME['text_primary']).pack(fill="x", pady=2)
-        tk.Label(reports_card.inner_frame, text="API Key Resend", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
-        tk.Entry(reports_card.inner_frame, textvariable=self.report_api_key, show="*", bg=THEME['card_bg'], fg=THEME['text_primary']).pack(fill="x", pady=2)
-        tk.Button(reports_card.inner_frame, text="Salvar Relatórios", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=12, pady=8, cursor="hand2", command=self._save_report_settings).pack(anchor="e", pady=(8, 0))
+        self.report_backup_api_key = tk.StringVar(value=self._report_settings.get('backup_api_key', ''))
+        self.report_subject_template = tk.StringVar(value=self._report_settings.get('email_subject_template', 'Relatório de Manutenção - {computer_name} - {date}'))
+        self.report_from_email = tk.StringVar(value=self._report_settings.get('from_email', 'onboarding@resend.dev'))
+        self.report_api_key_visible = tk.BooleanVar(value=False)
+        self.report_backup_api_key_visible = tk.BooleanVar(value=False)
+        self.report_save_pending = tk.BooleanVar(value=bool(self._report_settings.get('save_pending_on_failure', True)))
+        self.email_status_var = tk.StringVar(value="🔴 Não Configurada")
+        self.internet_status_var = tk.StringVar(value="🔴 Offline")
+        self.last_send_var = tk.StringVar(value="Sem envios ainda")
+
+        email_card = RoundedCard(page, "Envio de Relatórios", THEME['accent_blue'], width=1060, height=540)
+        email_card.pack(padx=24, pady=(0, 16), fill="x")
+        tk.Label(email_card.inner_frame, text="Obtenha sua API Key em: https://resend.com/api-keys", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=11)).pack(anchor="w", pady=(4, 8))
+
+        status_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        status_frame.pack(fill="x", pady=(0, 8))
+        tk.Label(status_frame, text="Status da API", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold")).pack(side="left")
+        tk.Label(status_frame, textvariable=self.email_status_var, bg=THEME['card_bg'], fg=THEME['accent_green'], font=self._font(10, min_size=9, max_size=12)).pack(side="left", padx=(8, 16))
+        tk.Label(status_frame, text="Internet", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold")).pack(side="left")
+        tk.Label(status_frame, textvariable=self.internet_status_var, bg=THEME['card_bg'], fg=THEME['accent_green'], font=self._font(10, min_size=9, max_size=12)).pack(side="left", padx=(8, 16))
+        tk.Label(status_frame, text="Último envio", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold")).pack(side="left")
+        tk.Label(status_frame, textvariable=self.last_send_var, bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=280, justify="left").pack(side="left", padx=(8, 0))
+
+        tk.Checkbutton(email_card.inner_frame, text="Enviar automaticamente após gerar relatório", variable=self.report_auto_send, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_blue'], activebackground=THEME['card_bg']).pack(anchor="w", pady=4)
+        tk.Checkbutton(email_card.inner_frame, text="Salvar localmente para envio posterior se falhar", variable=self.report_save_pending, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_blue'], activebackground=THEME['card_bg']).pack(anchor="w", pady=4)
+
+        action_bar = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        action_bar.pack(fill="x", pady=(8, 10))
+        self._create_action_button(action_bar, "💾 Salvar configuração", self._save_report_settings, bg=THEME['accent_green']).pack(side="left")
+        self._create_action_button(action_bar, "🧪 Testar envio", self._test_report_delivery, bg=THEME['accent_orange']).pack(side="left", padx=(8, 0))
+        self._create_action_button(action_bar, "📬 Enviar pendentes", self._send_pending_reports, bg=THEME['accent_purple']).pack(side="left", padx=(8, 0))
+
+        tk.Label(email_card.inner_frame, text="Email destinatário", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self._create_input_field(email_card.inner_frame, self.report_recipient).pack(fill="x", pady=2)
+
+        tk.Label(email_card.inner_frame, text="Assunto do e-mail", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self._create_input_field(email_card.inner_frame, self.report_subject_template).pack(fill="x", pady=2)
+
+        tk.Label(email_card.inner_frame, text="Texto do e-mail", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self.report_body_template_text = tk.Text(email_card.inner_frame, height=8, bg=THEME['card_bg'], fg=THEME['text_primary'], bd=1, relief="solid", highlightthickness=1, highlightbackground=THEME['shadow_hover'], highlightcolor=THEME['accent_blue'])
+        self.report_body_template_text.pack(fill="x", pady=2)
+        self.report_body_template_text.insert("1.0", self._report_settings.get('email_body_template', ''))
+
+        tk.Label(email_card.inner_frame, text="API Key Resend (principal)", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        api_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        api_frame.pack(fill="x", pady=2)
+        self.report_api_key_entry = self._create_input_field(api_frame, self.report_api_key, show='*')
+        self.report_api_key_entry.pack(side="left", fill="x", expand=True)
+        self._create_action_button(api_frame, "Mostrar", self._toggle_report_api_visibility, bg=THEME['accent_blue'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+        self._create_action_button(api_frame, "Colar", self._paste_report_api_key, bg=THEME['muted'], fg=THEME['text_primary'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+        self._create_action_button(api_frame, "Enviar e-mail teste", self._test_report_delivery, bg=THEME['accent_orange'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+
+        tk.Label(email_card.inner_frame, text="API Key Reserva", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        backup_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        backup_frame.pack(fill="x", pady=2)
+        self.report_backup_api_key_entry = self._create_input_field(backup_frame, self.report_backup_api_key, show='*')
+        self.report_backup_api_key_entry.pack(side="left", fill="x", expand=True)
+        self._create_action_button(backup_frame, "Mostrar", self._toggle_report_backup_api_visibility, bg=THEME['accent_blue'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+
+        tk.Label(email_card.inner_frame, text="Email remetente", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self._create_input_field(email_card.inner_frame, self.report_from_email).pack(fill="x", pady=2)
+
+        button_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        button_frame.pack(fill="x", pady=(12, 0))
+        self._create_action_button(button_frame, "Voltar", lambda: self.show_page("Configurações"), bg=THEME['muted'], fg=THEME['text_primary'], padx=12, pady=8).pack(side="left")
+
+        history_frame = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0)
+        history_frame.pack(fill="x", padx=24, pady=(0, 24))
+        tk.Label(history_frame, text="Histórico recente", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold")).pack(anchor="w", padx=16, pady=(12, 6))
+        self.email_history_text = tk.Text(history_frame, height=8, bg=THEME['card_bg'], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
+        self.email_history_text.pack(fill="x", padx=16, pady=(0, 12))
+        self._refresh_email_status_widgets()
+
+    def _toggle_report_api_visibility(self):
+        if hasattr(self, 'report_api_key_entry') and self.report_api_key_visible.get():
+            self.report_api_key_entry.configure(show='*')
+            self.report_api_key_visible.set(False)
+        elif hasattr(self, 'report_api_key_entry'):
+            self.report_api_key_entry.configure(show='')
+            self.report_api_key_visible.set(True)
+
+    def _toggle_report_backup_api_visibility(self):
+        if hasattr(self, 'report_backup_api_key_entry') and self.report_backup_api_key_visible.get():
+            self.report_backup_api_key_entry.configure(show='*')
+            self.report_backup_api_key_visible.set(False)
+        elif hasattr(self, 'report_backup_api_key_entry'):
+            self.report_backup_api_key_entry.configure(show='')
+            self.report_backup_api_key_visible.set(True)
+
+    def _refresh_email_status_widgets(self):
+        if not hasattr(self, 'email_status_var'):
+            return
+        service = self.maintenance_coordinator.email_service
+        api_error = service.validate_api_key(service.api_key)
+        self.email_status_var.set("🟢 Configurada" if not api_error else "🔴 Não Configurada")
+        self.internet_status_var.set("🟢 Online" if service.check_internet(timeout=2) else "🔴 Offline")
+        pending_dir = getattr(service, 'pending_reports_dir', None)
+        pending_count = 0
+        if pending_dir and os.path.isdir(pending_dir):
+            pending_count = len([name for name in os.listdir(pending_dir) if name.endswith('.json')])
+        history = service.load_recent_history(limit=5)
+        if history:
+            latest = history[-1]
+            self.last_send_var.set(f"{pending_count} pendente(s) | {latest['timestamp']} | {latest['status']}")
+            lines = []
+            for entry in history:
+                detail = entry.get('error', '-') if entry.get('error') not in ('-', '') else 'Enviado'
+                lines.append(f"{entry['timestamp']} | {entry['status']} | {detail}")
+            self.email_history_text.delete("1.0", tk.END)
+            self.email_history_text.insert(tk.END, "\n".join(lines))
+        else:
+            self.last_send_var.set(f"{pending_count} pendente(s)" if pending_count else "Sem envios ainda")
+            self.email_history_text.delete("1.0", tk.END)
+            self.email_history_text.insert(tk.END, "Nenhum envio registrado.")
 
     def _refresh_cleanup_estimate(self):
         if not hasattr(self, 'cleanup_summary'):
             return
         selected_ids = [item_id for item_id, var in self.cleanup_action_vars.items() if var.get()]
         estimate = self.maintenance_coordinator.cleaner.estimate_recovery(selected_ids)
-        self.cleanup_summary.config(text=f"Estimativa de espaço recuperável: {estimate['total_human']}")
+        selected_count = len(selected_ids)
+        self.cleanup_summary.config(text=f"Selecionados: {selected_count} • Recuperável: {estimate['total_human']}")
+        self._refresh_cleanup_option_cards(estimate=estimate)
+
+    def _refresh_cleanup_option_cards(self, estimate=None):
+        if not hasattr(self, 'cleanup_option_cards'):
+            return
+        estimate_details = estimate.get('details', []) if isinstance(estimate, dict) else []
+        estimate_map = {detail.get('id'): detail for detail in estimate_details if isinstance(detail, dict)}
+        total_estimate = estimate.get('total_bytes', 0) if isinstance(estimate, dict) else 0
+        for action_id, card in self.cleanup_option_cards.items():
+            if action_id not in self.cleanup_action_vars:
+                continue
+            selected = self.cleanup_action_vars[action_id].get()
+            active_bg = THEME['sidebar_active_bg'] if selected else THEME['card_bg']
+            active_border = THEME['accent_blue'] if selected else THEME['shadow']
+            card.configure(highlightbackground=active_border, highlightthickness=2)
+            card.configure(bg=active_bg)
+            for child in card.winfo_children():
+                if isinstance(child, tk.Frame):
+                    child.configure(bg=active_bg)
+                    for grandchild in child.winfo_children():
+                        if isinstance(grandchild, tk.Frame):
+                            grandchild.configure(bg=active_bg)
+                            for item in grandchild.winfo_children():
+                                if isinstance(item, tk.Label):
+                                    item.configure(bg=active_bg, fg=THEME['text_primary'] if selected else THEME['text_secondary'])
+                                elif isinstance(item, tk.Checkbutton):
+                                    item.configure(bg=active_bg)
+                        elif isinstance(grandchild, tk.Label):
+                            grandchild.configure(bg=active_bg, fg=THEME['text_primary'] if selected else THEME['text_secondary'])
+                        elif isinstance(grandchild, tk.Checkbutton):
+                            grandchild.configure(bg=active_bg)
+
+            detail = estimate_map.get(action_id, {})
+            estimated_bytes = detail.get('bytes', 0) if isinstance(detail, dict) else 0
+            if selected and total_estimate > 0 and estimated_bytes > 0:
+                percent = min(100.0, (estimated_bytes / total_estimate) * 100.0)
+            elif selected and estimated_bytes > 0:
+                percent = 100.0
+            else:
+                percent = 0.0
+            if action_id in self.cleanup_option_bars:
+                self.cleanup_option_bars[action_id].set_value(percent)
+            if action_id in self.cleanup_option_result_labels:
+                self.cleanup_option_result_labels[action_id].config(text=detail.get('human', '0 B') if selected else '0 B')
+
+    def _apply_cleanup_results(self, cleanup_results):
+        if not hasattr(self, 'cleanup_option_bars'):
+            return
+        result_map = {}
+        for item in cleanup_results or []:
+            if isinstance(item, dict) and item.get('id'):
+                result_map[item['id']] = item
+        for action_id, bar in self.cleanup_option_bars.items():
+            result = result_map.get(action_id)
+            if not result:
+                continue
+            actual_bytes = result.get('freed_bytes', 0) or 0
+            estimated_bytes = 0
+            if action_id in self.cleanup_action_vars and self.cleanup_action_vars[action_id].get():
+                estimate = self.maintenance_coordinator.cleaner.estimate_recovery([action_id])
+                details = estimate.get('details', []) if isinstance(estimate, dict) else []
+                if details:
+                    estimated_bytes = details[0].get('bytes', 0) or 0
+            if estimated_bytes > 0:
+                percent = min(100.0, (actual_bytes / estimated_bytes) * 100.0 if estimated_bytes else 100.0)
+            else:
+                percent = 100.0 if actual_bytes > 0 else 0.0
+            bar.set_value(percent)
+            if action_id in self.cleanup_option_result_labels:
+                self.cleanup_option_result_labels[action_id].config(text=result.get('freed', '0 B'))
 
     def _reset_cleanup_ui(self):
         if not hasattr(self, 'cleanup_output'):
@@ -1128,18 +1838,38 @@ class App(tk.Tk):
             self.cleanup_output.see(tk.END)
 
     def _set_cleanup_buttons_state(self, enabled: bool):
-        for widget in [self.cleanup_start_button, self.cleanup_reports_button, self.cleanup_test_button]:
+        for widget_name in [
+            'cleanup_start_button',
+            'cleanup_reports_button',
+            'cleanup_send_button',
+        ]:
+            widget = getattr(self, widget_name, None)
             if widget is not None:
                 widget.configure(state="normal" if enabled else "disabled")
 
     def _save_report_settings(self):
+        body_template = self.report_body_template_text.get("1.0", tk.END).strip() if hasattr(self, 'report_body_template_text') else ""
         self._report_settings = {
             "auto_send": bool(self.report_auto_send.get()),
             "resend_api_key": self.report_api_key.get(),
+            "backup_api_key": self.report_backup_api_key.get() if hasattr(self, 'report_backup_api_key') else "",
             "recipient_email": self.report_recipient.get(),
+            "from_email": self.report_from_email.get(),
+            "email_subject_template": self.report_subject_template.get() if hasattr(self, 'report_subject_template') else "Relatório de Manutenção - {computer_name} - {date}",
+            "email_body_template": body_template,
+            "save_pending_on_failure": bool(self.report_save_pending.get()) if hasattr(self, 'report_save_pending') else True,
         }
         self.report_settings_manager.save(self._report_settings)
+        self.maintenance_coordinator.email_service.save_config(self._report_settings)
         self._append_cleanup_log("Configurações de relatórios salvas.")
+        self._refresh_email_status_widgets()
+
+    def _paste_report_api_key(self):
+        try:
+            self.report_api_key.set(self.clipboard_get())
+            self._append_cleanup_log("Chave de API colada da área de transferência.")
+        except tk.TclError:
+            self._append_cleanup_log("Não há texto na área de transferência.")
 
     def _open_reports_folder(self):
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Relatorio_Limpeza'))
@@ -1153,12 +1883,139 @@ class App(tk.Tk):
             self._append_cleanup_log(f"Não foi possível abrir a pasta: {exc}")
 
     def _test_report_delivery(self):
+        body_template = self.report_body_template_text.get("1.0", tk.END).strip() if hasattr(self, 'report_body_template_text') else ""
+        self._report_settings = self.report_settings_manager.load()
+        self._report_settings.update({
+            "auto_send": bool(self.report_auto_send.get()) if hasattr(self, 'report_auto_send') else bool(self._report_settings.get('auto_send', False)),
+            "resend_api_key": self.report_api_key.get() if hasattr(self, 'report_api_key') else self._report_settings.get('resend_api_key', ''),
+            "backup_api_key": self.report_backup_api_key.get() if hasattr(self, 'report_backup_api_key') else self._report_settings.get('backup_api_key', ''),
+            "recipient_email": self.report_recipient.get() if hasattr(self, 'report_recipient') else self._report_settings.get('recipient_email', ''),
+            "from_email": self.report_from_email.get() if hasattr(self, 'report_from_email') else self._report_settings.get('from_email', 'onboarding@resend.dev'),
+            "email_subject_template": self.report_subject_template.get() if hasattr(self, 'report_subject_template') else self._report_settings.get('email_subject_template', 'Relatório de Manutenção - {computer_name} - {date}'),
+            "email_body_template": body_template if body_template else self._report_settings.get('email_body_template', ''),
+            "save_pending_on_failure": bool(self.report_save_pending.get()) if hasattr(self, 'report_save_pending') else bool(self._report_settings.get('save_pending_on_failure', True)),
+        })
+        self.report_settings_manager.save(self._report_settings)
+        self.maintenance_coordinator.email_service.save_config(self._report_settings)
+
+        api_key = self._report_settings.get("resend_api_key", "").strip()
+        recipient = self._report_settings.get("recipient_email", "").strip()
+
+        if not api_key:
+            self._append_cleanup_log("❌ API Key Resend não configurada.")
+            self._append_cleanup_log("   → Acesse Configurações e preencha 'API Key Resend'")
+            return
+
+        if not recipient:
+            self._append_cleanup_log("❌ Email destinatário não configurado.")
+            self._append_cleanup_log("   → Acesse Configurações e preencha 'Email destinatário'")
+            return
+
         try:
-            self._append_cleanup_log("Enviando teste de relatório...")
-            self.maintenance_coordinator.test_send(self._report_settings)
-            self._append_cleanup_log("Teste realizado com sucesso.")
+            self._append_cleanup_log("📧 Enviando teste de relatório...")
+            result = self.maintenance_coordinator.test_send(self._report_settings)
+            if result.get("success"):
+                self._append_cleanup_log("✅ Email enviado com sucesso.")
+            else:
+                self._append_cleanup_log(f"❌ {result.get('message', 'Falha no teste de envio.')}")
         except Exception as exc:
-            self._append_cleanup_log(f"Erro no teste de envio: {exc}")
+            self._append_cleanup_log(f"❌ Erro no teste de envio: {exc}")
+            self._append_cleanup_log("   → Verifique se a API Key está correta na aba Configurações")
+        self._refresh_email_status_widgets()
+
+    def _send_last_report(self):
+        body_template = self.report_body_template_text.get("1.0", tk.END).strip() if hasattr(self, 'report_body_template_text') else ""
+        self._report_settings = self.report_settings_manager.load()
+        self._report_settings.update({
+            "auto_send": bool(self.report_auto_send.get()) if hasattr(self, 'report_auto_send') else bool(self._report_settings.get('auto_send', False)),
+            "resend_api_key": self.report_api_key.get() if hasattr(self, 'report_api_key') else self._report_settings.get('resend_api_key', ''),
+            "backup_api_key": self.report_backup_api_key.get() if hasattr(self, 'report_backup_api_key') else self._report_settings.get('backup_api_key', ''),
+            "recipient_email": self.report_recipient.get() if hasattr(self, 'report_recipient') else self._report_settings.get('recipient_email', ''),
+            "from_email": self.report_from_email.get() if hasattr(self, 'report_from_email') else self._report_settings.get('from_email', 'onboarding@resend.dev'),
+            "email_subject_template": self.report_subject_template.get() if hasattr(self, 'report_subject_template') else self._report_settings.get('email_subject_template', 'Relatório de Manutenção - {computer_name} - {date}'),
+            "email_body_template": body_template if body_template else self._report_settings.get('email_body_template', ''),
+            "save_pending_on_failure": bool(self.report_save_pending.get()) if hasattr(self, 'report_save_pending') else bool(self._report_settings.get('save_pending_on_failure', True)),
+        })
+        self.report_settings_manager.save(self._report_settings)
+        self.maintenance_coordinator.email_service.save_config(self._report_settings)
+
+        api_key = self._report_settings.get("resend_api_key", "").strip()
+        recipient = self._report_settings.get("recipient_email", "").strip()
+        from_email = self._report_settings.get("from_email", "").strip()
+
+        if not api_key:
+            self._append_cleanup_log("❌ API Key Resend não configurada.")
+            self._append_cleanup_log("   → Acesse Configurações e preencha 'API Key Resend'")
+            return
+
+        if not recipient:
+            self._append_cleanup_log("❌ Email destinatário não configurado.")
+            self._append_cleanup_log("   → Acesse Configurações e preencha 'Email destinatário'")
+            return
+
+        if not from_email:
+            self._append_cleanup_log("❌ Email remetente não configurado.")
+            self._append_cleanup_log("   → Acesse Configurações e preencha 'Email remetente'")
+            return
+
+        try:
+            report_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Relatorio_Limpeza'))
+            if not os.path.exists(report_dir):
+                self._append_cleanup_log("❌ Nenhum relatório encontrado.")
+                self._append_cleanup_log("   → Execute uma manutenção primeiro para gerar um relatório")
+                return
+
+            report_path = get_latest_report_path(report_dir)
+            if not report_path:
+                self._append_cleanup_log("❌ Nenhum relatório encontrado.")
+                self._append_cleanup_log("   → Execute uma manutenção primeiro para gerar um relatório")
+                return
+
+            report_file_name = os.path.basename(report_path)
+            report_dt = datetime.fromtimestamp(os.path.getmtime(report_path))
+            report_date = format_brazilian_date(report_dt)
+            report_time = report_dt.strftime('%H:%M:%S')
+
+            self._append_cleanup_log(f"📧 Enviando relatório: {report_file_name}...")
+            result = self.maintenance_coordinator.email_service.send_report(
+                recipient_email=recipient,
+                subject=self.maintenance_coordinator.email_service.generate_subject(os.environ.get('COMPUTERNAME', 'Sistema'), report_date=report_date),
+                body=self.maintenance_coordinator.email_service.generate_body(
+                    {"system": {"computer_name": os.environ.get('COMPUTERNAME', 'Sistema'), "os_name": os.name == 'nt' and 'Windows' or 'Linux', "version": '1.0'}},
+                    report_path,
+                    0,
+                    report_date=report_date,
+                    report_time=report_time,
+                ),
+                attachment_path=report_path,
+            )
+            if result.get("success"):
+                self._append_cleanup_log("✅ Relatório enviado com sucesso.")
+            else:
+                self._append_cleanup_log(f"❌ {result.get('message', 'Falha ao enviar relatório.')}")
+        except Exception as exc:
+            self._append_cleanup_log(f"❌ Erro ao enviar relatório: {exc}")
+            self._append_cleanup_log("   → Verifique se a API Key está correta na aba Configurações")
+        self._refresh_email_status_widgets()
+
+    def _send_pending_reports(self):
+        self._report_settings = self.report_settings_manager.load()
+        body_template = self.report_body_template_text.get("1.0", tk.END).strip() if hasattr(self, 'report_body_template_text') else ""
+        self._report_settings.update({
+            "auto_send": bool(self.report_auto_send.get()) if hasattr(self, 'report_auto_send') else bool(self._report_settings.get('auto_send', False)),
+            "resend_api_key": self.report_api_key.get() if hasattr(self, 'report_api_key') else self._report_settings.get('resend_api_key', ''),
+            "backup_api_key": self.report_backup_api_key.get() if hasattr(self, 'report_backup_api_key') else self._report_settings.get('backup_api_key', ''),
+            "recipient_email": self.report_recipient.get() if hasattr(self, 'report_recipient') else self._report_settings.get('recipient_email', ''),
+            "from_email": self.report_from_email.get() if hasattr(self, 'report_from_email') else self._report_settings.get('from_email', 'onboarding@resend.dev'),
+            "email_subject_template": self.report_subject_template.get() if hasattr(self, 'report_subject_template') else self._report_settings.get('email_subject_template', 'Relatório de Manutenção - {computer_name} - {date}'),
+            "email_body_template": body_template if body_template else self._report_settings.get('email_body_template', ''),
+            "save_pending_on_failure": bool(self.report_save_pending.get()) if hasattr(self, 'report_save_pending') else bool(self._report_settings.get('save_pending_on_failure', True)),
+        })
+        self.report_settings_manager.save(self._report_settings)
+        self.maintenance_coordinator.email_service.save_config(self._report_settings)
+        result = self.maintenance_coordinator.email_service.send_pending_reports()
+        self._append_cleanup_log(result.get("message", "Processamento concluído."))
+        self._refresh_email_status_widgets()
 
     def _settings_path(self):
         return os.path.join(os.path.dirname(__file__), '..', 'settings.json') if getattr(sys := __import__('sys'), 'frozen', False) == False else os.path.join(os.path.dirname(sys.executable), 'settings.json')
@@ -2575,6 +3432,7 @@ class App(tk.Tk):
                     initial_payload=initial_payload,
                     settings=self._report_settings,
                     progress_callback=progress,
+                    selected_programs=self.selected_programs_for_report,
                 )
                 self._schedule_ui_update(lambda result=result: self._finalize_cleanup(result))
             except Exception as exc:
@@ -2597,6 +3455,8 @@ class App(tk.Tk):
             self._append_cleanup_log(f"Erro: {result['error']}")
             self._update_cleanup_step("Concluído", "error")
             return
+        if result.get("cleanup_results"):
+            self._apply_cleanup_results(result.get("cleanup_results"))
         report_path = result.get("report_path")
         if report_path:
             self._append_cleanup_log(f"Relatório salvo em {report_path}")

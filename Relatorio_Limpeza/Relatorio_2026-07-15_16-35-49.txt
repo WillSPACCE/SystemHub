@@ -1,0 +1,54 @@
+==================================================
+TESTE DE ENVIO
+RELATÓRIO DE MANUTENÇÃO
+==================================================
+Data: 2026-07-15
+Hora: 16:35:49
+Versão do Programa: 1.0
+Tempo da manutenção: 00:00:01
+
+COMPUTADOR
+Nome: PC-TEST
+Usuário: willyan martins
+Windows: Windows
+Build: Não disponível
+Tempo Ligado: Não disponível
+
+PROCESSADOR
+Modelo: Não disponível
+Temperatura: Não disponível
+Uso: Não disponível
+Clock: Não disponível
+Núcleos: Não disponível
+Threads: Não disponível
+
+MEMÓRIA
+Total: Não disponível
+Utilizada: Não disponível
+Livre: Não disponível
+Uso %: Não disponível
+
+SSD
+Marca: Não disponível
+Modelo: Não disponível
+Temperatura: Não disponível
+Saúde: Não disponível
+Espaço Livre: Não disponível
+Espaço Utilizado: Não disponível
+
+LIMPEZA
+Teste: OK (0 B)
+
+RESULTADO
+Espaço Recuperado: 0 B
+Tempo da limpeza: 00:00:01
+Status Geral: OK
+
+OBSERVAÇÕES
+CPU trabalhando dentro do esperado.
+Memória disponível em nível aceitável.
+Saúde do SSD precisa de atenção.
+
+==================================================
+Relatório gerado automaticamente pelo InfoCase Checkup.
+==================================================

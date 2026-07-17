@@ -73,8 +73,11 @@ class MaintenanceCoordinator:
             try:
                 recipient = settings.get("recipient_email")
                 api_key = settings.get("resend_api_key")
+                from_email = settings.get("from_email") or getattr(self.email_service, "from_email", None)
                 if recipient and api_key:
                     self.email_service.api_key = api_key
+                    if from_email:
+                        self.email_service.from_email = from_email
                     self.email_service.send_report(
                         recipient_email=recipient,
                         subject=f"Relatório de Manutenção - {initial_payload.get('system', {}).get('computer_name', 'Sistema')}",
@@ -121,6 +124,8 @@ class MaintenanceCoordinator:
             overall_status="OK",
         )
         self.email_service.api_key = settings.get("resend_api_key")
+        if settings.get("from_email"):
+            self.email_service.from_email = settings.get("from_email")
         self.email_service.send_report(
             recipient_email=settings.get("recipient_email", ""),
             subject="Teste de envio do InfoCase Checkup",
@@ -164,15 +169,18 @@ class MaintenanceCoordinator:
     @staticmethod
     def _build_email_body(initial_payload: Dict[str, Any], report_path: str, recovered_bytes: int) -> str:
         system = initial_payload.get("system", {}) or {}
+        user = os.environ.get('USERNAME') or os.environ.get('USER') or 'Não disponível'
+        computer = system.get('computer_name', 'Não disponível')
+        os_name = system.get('os_name', 'Não disponível')
         return (
-            "<p>Olá.</p>"
-            "<p>Segue em anexo o relatório de manutenção gerado automaticamente pelo InfoCase Checkup.</p>"
-            f"<p><strong>Computador:</strong> {system.get('computer_name', 'Não disponível')}</p>"
-            f"<p><strong>Usuário:</strong> {os.environ.get('USERNAME') or os.environ.get('USER') or 'Não disponível'}</p>"
-            f"<p><strong>Windows:</strong> {system.get('os_name', 'Não disponível')}</p>"
-            f"<p><strong>Espaço Recuperado:</strong> {recovered_bytes}</p>"
-            "<p>O relatório completo encontra-se em anexo.</p>"
-            "<p>Mensagem enviada automaticamente pelo InfoCase Checkup.</p>"
+            "Olá.\n\n"
+            "Segue em anexo o relatório de manutenção gerado automaticamente pelo InfoCase Checkup.\n\n"
+            f"Computador: {computer}\n"
+            f"Usuário: {user}\n"
+            f"Windows: {os_name}\n"
+            f"Espaço Recuperado: {recovered_bytes}\n\n"
+            "O relatório completo encontra-se em anexo.\n"
+            "Mensagem enviada automaticamente pelo InfoCase Checkup."
         )
 
     @staticmethod

@@ -21,7 +21,7 @@ class ReportGenerator:
         report_name: Optional[str] = None,
     ) -> str:
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
-        timestamp = report_name or datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = report_name or datetime.now().strftime("%Y-%m-%d")
         report_path = os.path.join(self.output_dir, f"Relatorio_{timestamp}.txt")
         content = self._build_content(
             title=title,

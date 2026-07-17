@@ -2,6 +2,30 @@
 
 Este arquivo registra o que foi feito, como foi feito e o que ainda precisa ser melhorado no projeto.
 
+## 2026-07-15 - Correção do envio de relatório por e-mail
+
+### ✅ O que foi ajustado
+- Substituída a implementação antiga de e-mail por uma integração direta com a API da Resend usando o módulo padrão `urllib`.
+- Ajustado o payload do anexo para o formato esperado pela API, com conteúdo em Base64.
+- Adicionado o campo de remetente nas configurações de relatório e propagado esse valor para o fluxo de manutenção.
+- Incluído teste de regressão cobrindo o uso do remetente configurado no envio automático.
+
+### ✅ Validação
+- `pytest -q tests/test_maintenance_center.py` passou com 4 testes.
+- Correção no coletor de manutenção para usar os mesmos dados normalizados do dashboard inicial.
+- Alterado o nome do relatório para usar apenas a data (`%Y-%m-%d`) para evitar acúmulo de relatórios do mesmo dia.
+- Adicionado botão "Enviar Relatório" na aba de limpeza para enviar manualmente o último relatório gerado.
+- Corrigido o formato do payload da API Resend:
+  - Campo `"to"` agora é uma lista: `["email@example.com"]`
+  - Campo `"html"` mudou para `"text"` para texto plano
+  - Conteúdo do anexo em Base64 (correto)
+- Adicionadas validações e mensagens de erro descritivas:
+  - Avisa quando API Key não está configurada
+  - Avisa quando email destinatário/remetente não estão configurados
+  - Fornece instruções de como preencher as configurações
+  - Recarrega as configurações do arquivo antes de enviar
+- Adicionado link de referência na aba Configurações: https://resend.com/api-keys
+
 ## 2026-07-08
 
 ### O que foi feito

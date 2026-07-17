@@ -1,0 +1,63 @@
+==================================================
+INFOCASE CHECKUP
+RELATÓRIO DE MANUTENÇÃO
+==================================================
+Data: 2026-07-15
+Hora: 16:47:42
+Versão do Programa: 1.0
+Tempo da manutenção: 00:00:43
+
+COMPUTADOR
+Nome: WILLYAN
+Usuário: willyan martins
+Windows: Windows
+Build: 10.0.26200
+Tempo Ligado: 0 dias, 17 horas, 58 minutos
+
+PROCESSADOR
+Modelo: AMD Ryzen 3 3200G with Radeon Vega Graphics
+Temperatura: 32.9°C
+Uso: 32.5%
+Clock: Sensor não suportado pelo hardware.
+Núcleos: 4
+Threads: 4
+
+MEMÓRIA
+Total: 5.92 GB
+Utilizada: 5.11 GB
+Livre: 0.81 GB
+Uso %: 86.3%
+
+SSD
+Marca: Não disponível
+Modelo: ADATA LEGEND 710
+Temperatura: 0.0°C
+Saúde: Sensor não suportado pelo hardware.
+Espaço Livre: Sensor não suportado pelo hardware.
+Espaço Utilizado: Sensor não suportado pelo hardware.
+
+LIMPEZA
+Temp Windows: OK (2.1 MB)
+Temp Usuário: OK (0 B)
+Cache Chrome: OK (416.3 MB)
+Cache Edge: OK (80.8 MB)
+Windows Update: OK (106.0 MB)
+Prefetch: OK (11.3 MB)
+MiniDump: OK (0 B)
+Logs: OK (428.5 MB)
+Lixeira: OK (0 B)
+Microsoft Defender: ⚠ (0 B)
+
+RESULTADO
+Espaço Recuperado: 1.0 GB
+Tempo da limpeza: 00:00:43
+Status Geral: OK
+
+OBSERVAÇÕES
+CPU trabalhando dentro do esperado.
+Uso de memória elevado.
+Saúde do SSD precisa de atenção.
+
+==================================================
+Relatório gerado automaticamente pelo InfoCase Checkup.
+==================================================

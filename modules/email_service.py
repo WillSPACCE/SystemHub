@@ -1,3 +1,4 @@
+import base64
 import os
 from typing import Any, Dict, Optional
 
@@ -16,21 +17,23 @@ class ResendEmailService:
         if not self.api_key:
             raise RuntimeError("API key da Resend não configurada.")
         if resend is None:
-            raise RuntimeError("A biblioteca resend não está instalada.")
+            raise RuntimeError("Biblioteca resend não está instalada.")
         if not recipient_email:
             raise RuntimeError("Email destinatário não informado.")
         if not os.path.exists(attachment_path):
             raise RuntimeError("Anexo não encontrado.")
 
         resend.api_key = self.api_key
+        payload = self._build_payload(recipient_email, subject, body, attachment_path)
+        return resend.Emails.send(payload)
+
+    def _build_payload(self, recipient_email: str, subject: str, body: str, attachment_path: str) -> Dict[str, Any]:
         with open(attachment_path, "rb") as handle:
             attachment_content = handle.read()
-        payload = {
+        return {
             "from": self.from_email,
             "to": [recipient_email],
             "subject": subject,
-            "html": body,
-            "attachments": [{"filename": os.path.basename(attachment_path), "content": attachment_content}],
+            "text": body,
+            "attachments": [{"filename": os.path.basename(attachment_path), "content": base64.b64encode(attachment_content).decode("ascii")}],
         }
-        response = resend.Emails.send(payload)
-        return response
