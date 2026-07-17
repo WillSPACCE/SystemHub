@@ -2,6 +2,133 @@
 
 Este arquivo registra o que foi feito, como foi feito e o que ainda precisa ser melhorado no projeto.
 
+## 2026-07-16 - Ajuste visual e rolagem da área de programas
+
+### ✅ O que foi entregue
+- Adicionada rolagem por roda do mouse na área de programas da guia Aplicativos.
+- A lista passou a usar um painel branco com destaque azul, alinhado ao visual das demais guias.
+- A barra de rolagem foi estilizada para combinar com a paleta azul do projeto.
+- A atualização da scroll region foi refinada para evitar travamentos visuais ao renderizar a lista.
+
+### ✅ Validação
+- Teste de regressão adicionado para garantir a rolagem por mouse na área de programas.
+- Execução de testes relacionada concluída com sucesso.
+
+## 2026-07-16 - Interatividade de programas: desinstalar e abrir local
+
+### ✅ O que foi entregue
+- **Filtro de Drivers/Serviços como botão toggle**:
+  - Botão "🔧 Mostrar Drivers/Serviços" que alterna entre mostrar lista completa e filtrada
+  - Quando ativado, mostra "✓ Drivers/Serviços Ocultos"
+  - Carrega e exibe a lista apropriada dinamicamente
+  
+- **Menu de contexto (clique direito)** em cada programa com opções:
+  - 🗑 **Desinstalar programa**: Executa UninstallString do registro
+  - 📂 **Abrir Local de Instalação**: Abre Explorer na pasta do programa
+  - 📋 **Copiar Nome**: Copia nome do programa para clipboard
+  - Opções desabilitadas (gray) quando não disponíveis (sem UninstallString ou InstallLocation)
+
+- **Captura de informações adicionais** do registro:
+  - `UninstallString`: Comando para desinstalar
+  - `InstallLocation`: Caminho de instalação
+  - Agora retornados pelo `InstalledProgramsService`
+
+- **Dica visual de interatividade**: 
+  - Texto cinzento abaixo da versão indicando "clique direito para desinstalar ou abrir local"
+
+- **Métodos novos**:
+  - `_show_program_context_menu()`: Cria e exibe menu de contexto
+  - `_uninstall_program()`: Executa desinstalação
+  - `_open_program_location()`: Abre pasta no Windows Explorer
+  - `_copy_to_clipboard()`: Copia nome para clipboard
+  - `_toggle_driver_filter()`: Alterna filtro drivers/serviços
+  - Atualização de `_load_installed_programs()`: Carrega lista completa e filtra conforme necessário
+
+### ✅ Validação
+- Compilação: ✓ main.py e programs_service.py compilaram sem erros
+- Testes: ✓ 16 testes passaram (test_maintenance_center.py + test_email_service.py)
+
+### 📋 Detalhes Técnicos
+- `InstalledProgramsService.get_installed_programs()`: Retorna também uninstall_string e install_location
+- `InstalledProgramsService.uninstall_program()`: Usa subprocess para executar UninstallString
+- `InstalledProgramsService.open_install_location()`: Usa os.startfile() no Windows
+- Menu criado dinamicamente com tk.Menu() e renderizado onde o clique direito ocorreu
+- Dicionário `self.programs_data` armazena uninstall_string e install_location de cada programa
+
+## 2026-07-16 - Melhoria visual da página de Aplicativos e filtro inteligente
+
+### ✅ O que foi entregue
+- **Filtro inteligente automático**: Drivers e serviços do Windows são automaticamente removidos da lista de programas.
+  - Padrões excluídos: nvidia, amd, intel, drivers, services, windows components, dotnet, vcredist, etc.
+- **Visual aprimorado dos cards**: 
+  - Cada programa agora exibe em um card elegante com nome (bold) e versão (cinza menor)
+  - Checkbox visual melhorado com cores apropriadas
+  - Borda sutil entre itens para melhor separação
+  - Informações padronizadas (nome do programa e versão)
+- **Contador de programas**:
+  - Exibe quantidade total de programas disponíveis
+  - Atualiza dinamicamente durante filtro de busca
+  - Mostra quantos programas correspondem ao filtro
+- **Melhoria na seção de selecionados**:
+  - Lista numerada (1, 2, 3...) ao invés de apenas separada por quebras
+  - Exibe ✓ e contador no início da lista
+  - Mensagem "➜ Nenhum programa selecionado" quando vazio
+- **Melhor descrição na página**: Menciona que drivers e serviços são automaticamente filtrados
+
+### ✅ Validação
+- Compilação: ✓ main.py compilou sem erros
+- Testes: ✓ 16 testes passaram (test_maintenance_center.py + test_email_service.py)
+- Funcionalidades não afetadas: ✓ Tests confirmam funcionamento
+
+### 📋 Detalhes Técnicos
+- Função `_is_windows_driver_or_service()`: Verifica padrões em nomes de programas para excluir drivers/serviços
+- `_display_programs()`: Renderiza cards com layout melhorado, informações de versão, contador vazio
+- `_apply_programs_filter()`: Atualiza contador e lista de filtrados
+- `_load_installed_programs()`: Carrega programas filtrados + atualiza contador inicial
+- `_update_selected_programs()`: Lista numerada com total selecionado
+
+## 2026-07-16 - Implementação de gerenciamento de aplicativos instalados
+
+### ✅ O que foi entregue
+- Criada a página **"Aplicativos"** na navegação lateral, listando todos os programas instalados no Windows.
+- Implementado filtro de programas em tempo real com campo de entrada e botão "Aplicar Filtro".
+- Adicionado sistema de seleção com checkboxes para cada programa instalado.
+- Criada visualização dos programas selecionados em tempo real na página.
+- Adicionado botão "Limpar Seleção" para reset rápido.
+- Integrada a persistência da seleção de programas em `report_settings` (salvo via `ReportSettingsManager`).
+- Expandido o módulo `report.py` para incluir uma seção "APLICATIVOS SELECIONADOS" nos relatórios gerados.
+- Integrada a passagem de programas selecionados pelo fluxo de manutenção até a geração do relatório.
+- Adicionado suporte opcional a `selected_programs` no `MaintenanceCoordinator.run_maintenance()`.
+
+### ✅ Validação
+- Todos os módulos compilaram sem erros: `main.py`, `modules/report.py`, `modules/maintenance.py`.
+- Aplicação iniciou com sucesso e não apresentou erros no carregamento da página de Aplicativos.
+- Estrutura de persistência funcional: programas selecionados são salvos em `report_settings` e podem ser carregados na próxima sessão.
+
+### 📋 Detalhes Técnicos
+- **Serviço**: `InstalledProgramsService` (já existente) enumera programas do Windows Registry.
+- **UI Page**: `_build_programs_page()` cria interface com Canvas scrollável para listar checkboxes.
+- **Métodos auxiliares**:
+  - `_load_installed_programs()`: carrega programas do serviço.
+  - `_display_programs()`: renderiza checkboxes na UI.
+  - `_apply_programs_filter()`: filtra programas por texto digitado.
+  - `_update_selected_programs()`: atualiza lista e persiste em `report_settings`.
+  - `_clear_selected_programs()`: limpa todas as seleções.
+- **Report Integration**: seção "APLICATIVOS SELECIONADOS" adicionada em `report.py`, exibida entre "Resumo da Limpeza" e "RESULTADO".
+
+## 2026-07-16 - Implementação completa do módulo de envio por e-mail
+
+### ✅ O que foi entregue
+- Criado um módulo independente de e-mail com a classe `EmailService`, responsável por carregar/salvar configuração, validar dados, formatar bytes, gerar assunto/corpo, testar envio, registrar log e verificar conexão.
+- Integrado o fluxo de manutenção ao novo serviço, preservando o comportamento anterior e passando a tratar falhas de forma padronizada sem travar a interface.
+- Expandida a página de configurações com campos seguros para API Key principal e reserva, remetente, destinatário, personalização de assunto/corpo, opção de envio automático, salvamento local para reenvio posterior e histórico recente.
+- Adicionado teste automatizado cobrindo validação, formatação, fallback para API reserva, fila local e teste temporário do relatório.
+- Implementado fallback de envio direto via API HTTP da Resend quando a biblioteca Python não está disponível, resolvendo o bloqueio de envio em ambientes sem a dependência instalada.
+
+### ✅ Validação
+- `pytest -q tests/test_email_service.py` passou com 7 testes.
+- A suíte completa atingiu 54 testes aprovados e 1 falha relacionada ao ambiente Tk/Tcl ausente para a execução de testes de interface.
+
 ## 2026-07-15 - Correção do envio de relatório por e-mail
 
 ### ✅ O que foi ajustado

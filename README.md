@@ -57,6 +57,8 @@ A aba Limpeza agora funciona como uma Central de Manutenção profissional. Com 
 
 A página de configurações organiza as preferências da interface, ajudando a experiência a ficar mais consistente e simples.
 
+A nova seção de Relatórios por E-mail permite configurar a API Resend principal e reserva, definir remetente e destinatário, personalizar assunto e corpo do e-mail, habilitar envio automático, salvar relatórios para envio posterior em caso de falha e acompanhar o histórico recente sem sair da aplicação. O envio agora tenta usar a biblioteca oficial quando disponível e, se não estiver presente, faz fallback direto para a API HTTP da Resend para manter o fluxo funcional.
+
 ## ▶️ Como usar
 
 ### 1. Instale as dependências

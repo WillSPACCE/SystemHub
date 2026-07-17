@@ -1,9 +1,10 @@
 import os
+from datetime import datetime
 
 from modules.cleaner import CleanupManager
 from modules.email_service import ResendEmailService
 from modules.maintenance import MaintenanceCoordinator
-from modules.report import ReportGenerator
+from modules.report import ReportGenerator, format_brazilian_date, get_latest_report_path
 
 
 def test_cleanup_estimate_returns_zero_for_missing_paths(tmp_path):
@@ -42,6 +43,42 @@ def test_email_service_builds_payload_for_resend(tmp_path):
     assert payload["subject"] == "Assunto"
     assert payload["text"] == "Mensagem"
     assert payload["attachments"][0]["filename"] == "report.txt"
+
+
+def test_get_latest_report_path_prefers_newest_file(tmp_path):
+    older_path = tmp_path / "Relatorio_2026-07-15.txt"
+    newer_path = tmp_path / "Relatorio_2026-07-16.txt"
+    older_path.write_text("older", encoding="utf-8")
+    newer_path.write_text("newer", encoding="utf-8")
+
+    old_time = 1710000000
+    new_time = 1710003600
+    os.utime(older_path, (old_time, old_time))
+    os.utime(newer_path, (new_time, new_time))
+
+    assert get_latest_report_path(str(tmp_path)) == str(newer_path)
+
+
+def test_format_brazilian_date_uses_brazilian_format():
+    assert format_brazilian_date(datetime(2026, 7, 16, 10, 30, 0)) == "16/07/2026"
+
+
+def test_report_generator_summarizes_cleanup_without_listing_each_item(tmp_path):
+    generator = ReportGenerator(output_dir=str(tmp_path))
+    report_path = generator.write_report(
+        title="INFOCASE CHECKUP",
+        initial_payload={"system": {"computer_name": "PC-TEST", "os_name": "Windows", "version": "11"}},
+        final_payload={"system": {"computer_name": "PC-TEST", "os_name": "Windows", "version": "11"}},
+        cleanup_results=[{"name": "Temp Windows", "status": "OK", "freed": "10 MB"}],
+        recovered_bytes=10 * 1024 * 1024,
+        maintenance_duration="00:00:02",
+        overall_status="OK",
+    )
+
+    content = open(report_path, encoding="utf-8").read()
+    assert "Resumo da Limpeza" in content
+    assert "Espaço recuperado" in content
+    assert "Temp Windows" not in content
 
 
 def test_run_maintenance_uses_sender_from_settings(tmp_path):

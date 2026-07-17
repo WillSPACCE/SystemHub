@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from modules.cleaner import CleanupManager
-from modules.email_service import ResendEmailService
+from modules.email_service import ResendEmailService, build_email_body
 from modules.history import HistoryManager
 from modules.report import ReportGenerator
 
@@ -27,6 +27,7 @@ class MaintenanceCoordinator:
         final_payload: Optional[Dict[str, Any]] = None,
         settings: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Any] = None,
+        selected_programs: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         started_at = time.perf_counter()
         settings = settings or {}
@@ -63,6 +64,7 @@ class MaintenanceCoordinator:
             recovered_bytes=recovered_bytes,
             maintenance_duration=self._format_duration(time.perf_counter() - started_at),
             overall_status="OK",
+            selected_programs=selected_programs or [],
         )
 
         sent = False
@@ -78,13 +80,20 @@ class MaintenanceCoordinator:
                     self.email_service.api_key = api_key
                     if from_email:
                         self.email_service.from_email = from_email
-                    self.email_service.send_report(
+                    generate_subject = getattr(self.email_service, "generate_subject", None)
+                    subject = (
+                        generate_subject(initial_payload.get("system", {}).get("computer_name", "Sistema"))
+                        if callable(generate_subject)
+                        else f"Relatório de Manutenção - {initial_payload.get('system', {}).get('computer_name', 'Sistema')}"
+                    )
+                    result = self.email_service.send_report(
                         recipient_email=recipient,
-                        subject=f"Relatório de Manutenção - {initial_payload.get('system', {}).get('computer_name', 'Sistema')}",
-                        body=self._build_email_body(initial_payload, report_path, recovered_bytes),
+                        subject=subject,
+                        body=build_email_body(initial_payload, report_path, recovered_bytes),
                         attachment_path=report_path,
                     )
-                    sent = True
+                    sent = bool(result.get("success", False))
+                    send_error = None if sent else result.get("message", "Falha ao enviar o relatório.")
                 else:
                     send_error = "Configuração incompleta para envio por e-mail."
             except Exception as exc:
@@ -114,25 +123,14 @@ class MaintenanceCoordinator:
 
     def test_send(self, settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         settings = settings or {}
-        report_path = self.report_generator.write_report(
-            title="TESTE DE ENVIO",
-            initial_payload={"system": {"computer_name": "PC-TEST", "os_name": "Windows", "version": "11"}},
-            final_payload={"system": {"computer_name": "PC-TEST", "os_name": "Windows", "version": "11"}},
-            cleanup_results=[{"name": "Teste", "status": "OK", "freed": "0 B"}],
-            recovered_bytes=0,
-            maintenance_duration="00:00:01",
-            overall_status="OK",
-        )
         self.email_service.api_key = settings.get("resend_api_key")
         if settings.get("from_email"):
             self.email_service.from_email = settings.get("from_email")
-        self.email_service.send_report(
+        self.email_service.recipient_email = settings.get("recipient_email", "")
+        return self.email_service.test_send(
             recipient_email=settings.get("recipient_email", ""),
-            subject="Teste de envio do InfoCase Checkup",
-            body="Teste de envio realizado com sucesso.",
-            attachment_path=report_path,
+            initial_payload={"system": {"computer_name": "PC-TEST", "os_name": "Windows", "version": "11"}},
         )
-        return {"report_path": report_path}
 
     def _gather_payload(self) -> Dict[str, Any]:
         from modules.collector_service import HardwareCollectorService
@@ -165,23 +163,6 @@ class MaintenanceCoordinator:
             return {"id": "defender", "name": "Microsoft Defender", "status": "OK", "freed_bytes": 0, "freed": "0 B", "message": "Verificação rápida concluída."}
         except Exception:
             return {"id": "defender", "name": "Microsoft Defender", "status": "⚠", "freed_bytes": 0, "freed": "0 B", "message": "Falha ao executar Defender."}
-
-    @staticmethod
-    def _build_email_body(initial_payload: Dict[str, Any], report_path: str, recovered_bytes: int) -> str:
-        system = initial_payload.get("system", {}) or {}
-        user = os.environ.get('USERNAME') or os.environ.get('USER') or 'Não disponível'
-        computer = system.get('computer_name', 'Não disponível')
-        os_name = system.get('os_name', 'Não disponível')
-        return (
-            "Olá.\n\n"
-            "Segue em anexo o relatório de manutenção gerado automaticamente pelo InfoCase Checkup.\n\n"
-            f"Computador: {computer}\n"
-            f"Usuário: {user}\n"
-            f"Windows: {os_name}\n"
-            f"Espaço Recuperado: {recovered_bytes}\n\n"
-            "O relatório completo encontra-se em anexo.\n"
-            "Mensagem enviada automaticamente pelo InfoCase Checkup."
-        )
 
     @staticmethod
     def _format_duration(seconds: float) -> str:

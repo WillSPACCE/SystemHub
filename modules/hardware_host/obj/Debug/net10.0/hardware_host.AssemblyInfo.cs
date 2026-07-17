@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("hardware_host")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b6929fd75ee818fa902d628e8d814b3549ee1598")]
 [assembly: System.Reflection.AssemblyProductAttribute("hardware_host")]
 [assembly: System.Reflection.AssemblyTitleAttribute("hardware_host")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

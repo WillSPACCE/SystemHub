@@ -4,6 +4,32 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
+def get_latest_report_path(report_dir: str) -> Optional[str]:
+    if not report_dir or not os.path.isdir(report_dir):
+        return None
+
+    report_files = [
+        os.path.join(report_dir, name)
+        for name in os.listdir(report_dir)
+        if name.startswith("Relatorio_") and name.endswith(".txt") and os.path.isfile(os.path.join(report_dir, name))
+    ]
+    if not report_files:
+        return None
+    return max(report_files, key=lambda path: os.path.getmtime(path))
+
+
+def format_brazilian_date(value: Optional[datetime] = None) -> str:
+    if isinstance(value, datetime):
+        return value.strftime("%d/%m/%Y")
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+            return parsed.strftime("%d/%m/%Y")
+        except ValueError:
+            return datetime.now().strftime("%d/%m/%Y")
+    return datetime.now().strftime("%d/%m/%Y")
+
+
 class ReportGenerator:
     def __init__(self, output_dir: Optional[str] = None):
         self.output_dir = output_dir or os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), "Relatorio_Limpeza"))
@@ -19,6 +45,7 @@ class ReportGenerator:
         overall_status: str,
         observations: Optional[List[str]] = None,
         report_name: Optional[str] = None,
+        selected_programs: Optional[List[str]] = None,
     ) -> str:
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         timestamp = report_name or datetime.now().strftime("%Y-%m-%d")
@@ -32,6 +59,7 @@ class ReportGenerator:
             maintenance_duration=maintenance_duration,
             overall_status=overall_status,
             observations=observations or self._auto_observations(initial_payload or {}, final_payload or {}),
+            selected_programs=selected_programs or [],
         )
         with open(report_path, "w", encoding="utf-8") as handle:
             handle.write(content)
@@ -47,6 +75,7 @@ class ReportGenerator:
         maintenance_duration: str,
         overall_status: str,
         observations: List[str],
+        selected_programs: Optional[List[str]] = None,
     ) -> str:
         initial_system = initial_payload.get("system", {}) or {}
         final_system = final_payload.get("system", {}) or {}
@@ -58,6 +87,7 @@ class ReportGenerator:
         final_disks = final_payload.get("disks", []) or []
         primary_disk = (final_disks[0] if final_disks else {}) or (initial_disks[0] if initial_disks else {})
 
+        collected_at = self._read_value(initial_payload, 'collected_at', final_payload, 'collected_at', datetime.now().strftime('%d/%m/%Y %H:%M:%S'))
         lines = [
             "==================================================",
             title,
@@ -67,6 +97,7 @@ class ReportGenerator:
             f"Hora: {datetime.now().strftime('%H:%M:%S')}",
             f"Versão do Programa: 1.0",
             f"Tempo da manutenção: {maintenance_duration}",
+            f"Coleta do Dashboard: {collected_at}",
             "",
             "COMPUTADOR",
             f"Nome: {self._read_value(initial_system, 'computer_name', final_system, 'computer_name', 'Não disponível')}",
@@ -97,13 +128,24 @@ class ReportGenerator:
             f"Espaço Livre: {self._read_value(primary_disk, 'free', primary_disk, 'free', 'Não disponível')}",
             f"Espaço Utilizado: {self._read_value(primary_disk, 'used', primary_disk, 'used', 'Não disponível')}",
             "",
-            "LIMPEZA",
-        ]
-        for item in cleanup_results:
-            lines.append(f"{item.get('name', 'Item')}: {item.get('status', 'OK')} ({item.get('freed', '0 B')})")
-        lines.extend([
+            "Resumo da Limpeza",
+            f"Itens processados: {len(cleanup_results)}",
+            f"Espaço recuperado: {self._format_bytes(recovered_bytes)}",
+            f"Status geral: {overall_status}",
             "",
-            "RESULTADO",
+        ]
+        
+        # Adicionar seção de aplicativos selecionados se houver
+        if selected_programs:
+            lines.extend([
+                "APLICATIVOS SELECIONADOS",
+                f"Total: {len(selected_programs)}",
+            ])
+            for program in selected_programs:
+                lines.append(f"  • {program}")
+            lines.append("")
+        
+        lines.extend([
             f"Espaço Recuperado: {self._format_bytes(recovered_bytes)}",
             f"Tempo da limpeza: {maintenance_duration}",
             f"Status Geral: {overall_status}",

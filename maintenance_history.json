@@ -7,5 +7,41 @@
     "duration": "00:00:43",
     "error": null,
     "timestamp": "2026-07-15 16:47:42"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-16.txt",
+    "sent": false,
+    "recovered_bytes": 42014,
+    "duration": "00:00:36",
+    "error": null,
+    "timestamp": "2026-07-16 16:11:57"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-16.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:38",
+    "error": null,
+    "timestamp": "2026-07-16 16:39:56"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-16.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:38",
+    "error": null,
+    "timestamp": "2026-07-16 17:37:22"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-17.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:37",
+    "error": null,
+    "timestamp": "2026-07-17 17:56:41"
   }
 ]

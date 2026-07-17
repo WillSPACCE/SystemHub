@@ -1,0 +1,27 @@
+INFOCASE CHECKUP
+TESTE DE ENVIO
+
+Data: 16/07/2026
+Hora: 12:41:06
+Nome PC: PC-TEST
+Usuário: willyan martins
+Windows: Windows
+Versão: 11
+
+Mensagem: Este é um teste de envio do InfoCase Checkup.
+
+Olá.
+
+Segue em anexo o relatório de manutenção gerado automaticamente pelo InfoCase Checkup.
+
+Computador: PC-TEST
+Usuário: willyan martins
+Windows: Windows
+Versão: 11
+Data: 16/07/2026
+Hora: 12:41:06
+Espaço Recuperado: 0 B
+
+O relatório completo encontra-se em anexo.
+Mensagem enviada automaticamente pelo InfoCase Checkup.
+INFOCASE TECNOLOGIA
