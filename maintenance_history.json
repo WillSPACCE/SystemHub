@@ -43,5 +43,14 @@
     "duration": "00:00:37",
     "error": null,
     "timestamp": "2026-07-17 17:56:41"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-18.txt",
+    "sent": false,
+    "recovered_bytes": 120921923,
+    "duration": "00:00:43",
+    "error": null,
+    "timestamp": "2026-07-18 22:20:05"
   }
 ]
