@@ -1,6 +1,7 @@
 import os
 import unittest
 
+from main import App
 from modules.cpu_service import CpuService
 from modules.hardware_service import HardwareService
 from modules.smart_service import SmartService
@@ -52,6 +53,11 @@ class HardwareServiceTests(unittest.TestCase):
         self.assertIn("firmware", result[0])
         self.assertIn("host_writes", result[0])
         self.assertIn("host_reads", result[0])
+
+    def test_format_hardware_detail_value_handles_lists_and_strings(self):
+        self.assertEqual(App._format_hardware_detail_value(["CPU", "32.0°C"]), "CPU, 32.0°C")
+        self.assertEqual(App._format_hardware_detail_value(None), "Não disponível")
+        self.assertEqual(App._format_hardware_detail_value(""), "Não disponível")
 
 
 if __name__ == "__main__":

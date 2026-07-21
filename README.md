@@ -12,7 +12,7 @@ O SystemHub foi criado para centralizar tarefas comuns de manutenção e diagnó
 
 - 📊 acompanhar o estado do hardware em tempo real;
 - 🛡️ gerenciar regras e conexões do firewall;
-- 🧹 limpar arquivos temporários e caches de forma mais controlada;
+- 🧹 limpar arquivos temporários e caches de forma mais controlada, incluindo opções extras de limpeza de disco e manutenção do Windows;
 - 📁 exportar dados úteis para análise ou documentação.
 
 ## 🧭 O que cada parte faz
@@ -27,6 +27,13 @@ A página inicial mostra um resumo rápido do computador:
 - Informações do sistema, placa-mãe, BIOS e GPU quando disponíveis
 
 Essa seção é ideal para uma visão rápida do estado do equipamento.
+
+### 🧠 Hardware
+
+A nova guia de Hardware reúne uma coleta mais completa das informações do computador para análise. Ela exibe dados detalhados de CPU, RAM, armazenamento, GPU, placa-mãe, sistema e sensores, e conta com dois botões:
+
+- Atualizar lista: coleta novamente os dados do equipamento;
+- Salvar lista: exporta a lista atual para um arquivo JSON para análise posterior.
 
 ### 🛡️ Firewall
 
@@ -47,7 +54,7 @@ A aba Limpeza agora funciona como uma Central de Manutenção profissional. Com 
 
 - coletar dados iniciais do sistema;
 - executar um checklist visual das etapas;
-- limpar arquivos temporários e caches selecionados;
+- limpar arquivos temporários e caches selecionados, com itens sensíveis desmarcados por padrão;
 - rodar uma verificação rápida do Microsoft Defender;
 - gerar um relatório técnico em TXT;
 - salvar o histórico das execuções;
@@ -78,6 +85,7 @@ py -3 main.py
 ### 3. Navegue pelas páginas
 
 - Dashboard: veja o estado atual do hardware
+- Hardware: analise uma coleta mais completa do equipamento
 - Firewall: liste conexões e gerencie regras
 - Cleanup: limpe arquivos temporários
 - Settings: confira as preferências da interface
@@ -110,15 +118,25 @@ Para rodar a suíte de testes:
 pytest -q
 ```
 
-## 🚀 Futuro: executável
+## 🚀 Executável para Windows
 
-Uma das próximas melhorias será a criação de um executável pronto para Windows, para que o projeto possa ser aberto sem precisar rodar o código manualmente via terminal.
+O projeto já está preparado para gerar um executável Windows com PyInstaller.
 
-Planejados para essa etapa:
+### Gerar o .exe
 
-- 📦 gerar um .exe para Windows;
-- 🖱️ instalação mais simples para usuários finais;
-- ⚡ abertura rápida do aplicativo sem dependências extras.
+No terminal, na pasta do projeto:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
+```
+
+O arquivo gerado ficará em `dist/` e pode ser distribuído em qualquer computador Windows com suporte às dependências do sistema.
+
+### O que a etapa entrega
+
+- 📦 arquivo executável para Windows;
+- 🖱️ abertura simples para usuários finais;
+- ⚡ entrada rápida sem precisar executar o código manualmente.
 
 ## ✅ Observações importantes
 

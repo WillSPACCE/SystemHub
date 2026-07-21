@@ -52,5 +52,68 @@
     "duration": "00:00:43",
     "error": null,
     "timestamp": "2026-07-18 22:20:05"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 97409411,
+    "duration": "00:00:06",
+    "error": null,
+    "timestamp": "2026-07-21 12:33:02"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:36",
+    "error": null,
+    "timestamp": "2026-07-21 14:01:19"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 5699683,
+    "duration": "00:00:30",
+    "error": null,
+    "timestamp": "2026-07-21 14:02:55"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:07",
+    "error": null,
+    "timestamp": "2026-07-21 14:10:02"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:06",
+    "error": null,
+    "timestamp": "2026-07-21 14:10:37"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:05",
+    "error": null,
+    "timestamp": "2026-07-21 14:15:11"
+  },
+  {
+    "status": "OK",
+    "report_path": "C:\\Users\\willy\\Videos\\Nova pasta\\Relatorio_Limpeza\\Relatorio_2026-07-21.txt",
+    "sent": false,
+    "recovered_bytes": 0,
+    "duration": "00:00:05",
+    "error": null,
+    "timestamp": "2026-07-21 14:15:40"
   }
 ]

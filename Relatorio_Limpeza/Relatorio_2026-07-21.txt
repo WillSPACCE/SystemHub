@@ -1,0 +1,62 @@
+==================================================
+INFOCASE CHECKUP
+RELATÓRIO DE MANUTENÇÃO
+==================================================
+Data: 2026-07-21
+Hora: 14:15:40
+Versão do Programa: 1.0
+Tempo da manutenção: 00:00:05
+Coleta do Dashboard: 21/07/2026 14:14:43
+
+COMPUTADOR
+Nome: WILLYAN
+Usuário: willyan martins
+Windows: Windows
+Build: 10.0.26200
+Tempo Ligado: 0 dias, 2 horas, 5 minutos
+
+PROCESSADOR
+Modelo: AMD Ryzen 3 3200G with Radeon Vega Graphics
+Temperatura: 34.4°C
+Uso: 32.5%
+Clock: Sensor não suportado pelo hardware.
+Núcleos: 4
+Threads: 4
+
+MEMÓRIA
+Total: 5.92 GB
+Utilizada: 5.21 GB
+Livre: 0.71 GB
+Uso %: 88.0%
+
+SSD
+Marca: Não suportado pelo dispositivo.
+Modelo: Não suportado pelo dispositivo.
+Temperatura: 47°C
+Saúde: 100%
+Espaço Livre: 118.10 GB
+Espaço Utilizado: 119.36 GB
+
+Resumo da Limpeza
+Itens processados: 1
+Espaço recuperado: 0 B
+Status geral: OK
+
+APLICATIVOS SELECIONADOS
+Total: 3
+  • AMD DVR64
+  • AMD Software
+  • AMD WVR64
+
+Espaço Recuperado: 0 B
+Tempo da limpeza: 00:00:05
+Status Geral: OK
+
+OBSERVAÇÕES
+CPU trabalhando dentro do esperado.
+Uso de memória elevado.
+Saúde do SSD precisa de atenção.
+
+==================================================
+Relatório gerado automaticamente pelo InfoCase Checkup.
+==================================================

@@ -2,6 +2,62 @@
 
 Este arquivo registra o que foi feito, como foi feito e o que ainda precisa ser melhorado no projeto.
 
+## 2026-07-21 - Tema premium com botão fixo na barra lateral
+
+### ✅ O que foi entregue
+- Implementado um botão de alternância de tema fixo na barra lateral com ícone visual, permitindo mudar rapidamente entre modo claro e escuro.
+- O tema escuro passou a usar uma paleta mais refinada e contrastada, com melhor diferenciação entre fundo, cards e elementos de navegação.
+- A página de configurações foi simplificada para destacar o novo fluxo de tema sem duplicar o controle visual.
+
+### ✅ Validação
+- Testes de regressão adicionados e executados com sucesso para a alternância do tema.
+- Compilação do módulo principal concluída sem erros.
+
+## 2026-07-21 - Ajustes visuais nas ferramentas e nos cards do dashboard
+
+### ✅ O que foi entregue
+- Os botões da guia Ferramentas passaram a ter um visual mais próximo de botões tradicionais, com borda e destaque visual melhores.
+- Os cards do dashboard agora recebem um contorno mais evidente no modo escuro, melhorando a identificação visual das blocagens principais.
+- A abertura das ferramentas do Windows foi validada por teste automatizado para garantir que o fluxo continua chamando o utilitário correto.
+
+### ✅ Validação
+- Testes de regressão executados com sucesso para a abertura das ferramentas e para o novo estilo dos botões.
+- Compilação do módulo principal concluída sem erros.
+
+
+### ✅ O que foi entregue
+- Implementado um botão de alternância de tema fixo na barra lateral com ícone visual, permitindo mudar rapidamente entre modo claro e escuro.
+- O tema escuro passou a usar uma paleta mais refinada e contrastada, com melhor diferenciação entre fundo, cards e elementos de navegação.
+- A página de configurações foi simplificada para destacar o novo fluxo de tema sem duplicar o controle visual.
+
+### ✅ Validação
+- Testes de regressão adicionados e executados com sucesso para a alternância do tema.
+- Compilação do módulo principal concluída sem erros.
+
+## 2026-07-21 - Guia de Hardware com atualização e exportação
+
+### ✅ O que foi entregue
+- Criada a guia de Hardware na interface com coleta detalhada de dados do computador para análise.
+- Adicionados os botões "Atualizar lista" e "Salvar lista" para renovar os dados e exportá-los em JSON.
+- A página passou a exibir informações mais completas de CPU, RAM, armazenamento, GPU, placa-mãe, sistema e sensores.
+
+### ✅ Validação
+- Teste de regressão adicionado para validar os botões e o salvamento da lista de hardware.
+- Compilação do módulo principal concluída sem erros.
+
+## 2026-07-21 - Limpeza segura com opções adicionais de Windows
+
+### ✅ O que foi entregue
+- Adicionadas novas opções de limpeza na central de manutenção para:
+  - instalações antigas do Windows;
+  - abertura da ferramenta Limpeza de Disco do Windows;
+  - backup do registro do Windows para revisão manual.
+- Itens sensíveis agora ficam desmarcados por padrão, reduzindo o risco de perda de arquivos ou credenciais.
+- Os backups automáticos continuam sendo criados para as pastas limpas, com retenção de 30 dias.
+
+### ✅ Validação
+- Testes de regressão adicionados e executados com sucesso para as novas opções de limpeza.
+
 ## 2026-07-16 - Ajuste visual e rolagem da área de programas
 
 ### ✅ O que foi entregue

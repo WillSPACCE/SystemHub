@@ -1,0 +1,764 @@
+{
+  "cpu": {
+    "name": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+    "manufacturer": "Não suportado pelo dispositivo.",
+    "architecture": "AMD64",
+    "clock_current": "Sensor não suportado pelo hardware.",
+    "clock_max": "Sensor não suportado pelo hardware.",
+    "clock_per_core": [],
+    "usage": "70.0%",
+    "usage_per_core": [
+      "GFX: 7.4%",
+      "CPU Core #1: 90.0%",
+      "CPU Core #2: 50.0%",
+      "CPU Core #3: 80.0%",
+      "CPU Core #4: 60.0%",
+      "CPU Core Max: 90.0%",
+      "GFX: 7.4%",
+      "D3D 3D: 0.0%",
+      "D3D High Priority Compute: 0.0%",
+      "D3D Compute 0: 0.0%",
+      "D3D Compute 1: 0.0%",
+      "D3D Video JPEG: 0.0%",
+      "D3D Video Codec 0: 0.0%",
+      "D3D Copy: 0.0%",
+      "D3D Timer 0: 0.0%",
+      "D3D Security 1: 0.0%",
+      "GPU Core: 20.0%"
+    ],
+    "physical_cores": "4",
+    "threads": "4",
+    "temperature": "40.2°C",
+    "temperature_per_core": [
+      "Core (Tctl/Tdie): 53.0°C",
+      "Core #1: 49.5°C",
+      "Core #2: 50.4°C",
+      "Core #3: 49.6°C",
+      "Core #4: 48.3°C",
+      "GFX: 40.2°C",
+      "Composite Temperature: 0.0°C",
+      "Warning Temperature: 0.0°C",
+      "Critical Temperature: 0.0°C"
+    ],
+    "power": "6.1 W"
+  },
+  "memory": {
+    "total": "5.92 GB",
+    "used": "5.19 GB",
+    "free": "0.73 GB",
+    "available": "0.73 GB",
+    "percent": "87.7%",
+    "speed": "2666",
+    "type": "Não suportado pelo dispositivo.",
+    "manufacturer": "A-DATA Technology",
+    "modules": "1"
+  },
+  "disks": [
+    {
+      "name": "C:",
+      "model": "Não suportado pelo dispositivo.",
+      "manufacturer": "Não suportado pelo dispositivo.",
+      "type": "NTFS",
+      "serial_number": "Não suportado pelo dispositivo.",
+      "interface": "nvme",
+      "firmware": "VC400618",
+      "total": "237.46 GB",
+      "used": "121.48 GB",
+      "free": "115.98 GB",
+      "filesystem": "NTFS",
+      "temperature": "50°C",
+      "smart_health": "100%",
+      "remaining_life": "Não suportado pelo dispositivo.",
+      "power_on_hours": "Não suportado pelo dispositivo.",
+      "startup_count": "Não suportado pelo dispositivo.",
+      "reallocated_sectors": "Não suportado pelo dispositivo.",
+      "pending_sectors": "Não suportado pelo dispositivo.",
+      "crc_errors": "Não suportado pelo dispositivo.",
+      "wear_level": "Não suportado pelo dispositivo.",
+      "errors": "Não suportado pelo dispositivo.",
+      "host_writes": "Não suportado pelo dispositivo.",
+      "host_reads": "Não suportado pelo dispositivo."
+    },
+    {
+      "name": "ADATA LEGEND 710",
+      "model": "ADATA LEGEND 710",
+      "manufacturer": "Não suportado pelo dispositivo.",
+      "type": "storage",
+      "serial_number": "Não suportado pelo dispositivo.",
+      "interface": "nvme",
+      "firmware": "VC400618",
+      "total": "Sensor não suportado pelo hardware.",
+      "used": "Sensor não suportado pelo hardware.",
+      "free": "Sensor não suportado pelo hardware.",
+      "filesystem": "Não suportado pelo dispositivo.",
+      "temperature": "50°C",
+      "smart_health": "100%",
+      "remaining_life": "0.0%",
+      "power_on_hours": "Sensor não suportado pelo hardware.",
+      "startup_count": "Não suportado pelo dispositivo.",
+      "reallocated_sectors": "Não suportado pelo dispositivo.",
+      "pending_sectors": "Não suportado pelo dispositivo.",
+      "crc_errors": "Não suportado pelo dispositivo.",
+      "wear_level": "Não suportado pelo dispositivo.",
+      "errors": "Não suportado pelo dispositivo.",
+      "host_writes": "Não suportado pelo dispositivo.",
+      "host_reads": "Não suportado pelo dispositivo."
+    }
+  ],
+  "gpu": {
+    "name": "Não suportado pelo dispositivo.",
+    "manufacturer": "Não suportado pelo dispositivo.",
+    "usage": "Não suportado pelo dispositivo.",
+    "temperature": "Não suportado pelo dispositivo.",
+    "clock": "Não suportado pelo dispositivo.",
+    "dedicated_memory": "Não suportado pelo dispositivo.",
+    "used_memory": "Não suportado pelo dispositivo."
+  },
+  "motherboard": {
+    "manufacturer": "Gigabyte Technology Co., Ltd.",
+    "model": "A520M K V2",
+    "bios": "Não suportado pelo dispositivo.",
+    "version": "Não suportado pelo dispositivo.",
+    "date": "Não suportado pelo dispositivo."
+  },
+  "system": {
+    "computer_name": "WILLYAN",
+    "os_name": "Windows",
+    "version": "Windows 11 (10.0.26200)",
+    "windows_version": "Windows 11 (10.0.26200)",
+    "update_status": "Sem dados de atualizaÃ§Ã£o",
+    "build": "10.0.26200",
+    "architecture": "AMD64",
+    "uptime": "0 dias, 3 horas, 34 minutos",
+    "network_name": "Radmin VPN",
+    "network_address": "26.20.59.69"
+  },
+  "sensors": [
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "CPU Core #1",
+      "sensor_type": "Load",
+      "value": "90.0%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "CPU Core #2",
+      "sensor_type": "Load",
+      "value": "50.0%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "CPU Core #3",
+      "sensor_type": "Load",
+      "value": "80.0%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "CPU Core #4",
+      "sensor_type": "Load",
+      "value": "60.0%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "CPU Total",
+      "sensor_type": "Load",
+      "value": "70.0%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "CPU Core Max",
+      "sensor_type": "Load",
+      "value": "90.0%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Cores (Average)",
+      "sensor_type": "Clock",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Cores (Average Effective)",
+      "sensor_type": "Clock",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #1 (Effective)",
+      "sensor_type": "Clock",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #1 VID",
+      "sensor_type": "Voltage",
+      "value": "1.4"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #2 (Effective)",
+      "sensor_type": "Clock",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #2 VID",
+      "sensor_type": "Voltage",
+      "value": "1.4"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #3 (Effective)",
+      "sensor_type": "Clock",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #3 VID",
+      "sensor_type": "Voltage",
+      "value": "1.4"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #4 (Effective)",
+      "sensor_type": "Clock",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #4 VID",
+      "sensor_type": "Voltage",
+      "value": "1.4"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core (Tctl/Tdie)",
+      "sensor_type": "Temperature",
+      "value": "53.0°C"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core (SVI2 TFN)",
+      "sensor_type": "Voltage",
+      "value": "1.4"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Bus Speed",
+      "sensor_type": "Clock",
+      "value": "100.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "TDC",
+      "sensor_type": "Current",
+      "value": "17.2"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "EDC",
+      "sensor_type": "Current",
+      "value": "71.8"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "SoC",
+      "sensor_type": "Current",
+      "value": "5.7"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "SoC",
+      "sensor_type": "Power",
+      "value": "6.1 W"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #1",
+      "sensor_type": "Temperature",
+      "value": "49.5°C"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #2",
+      "sensor_type": "Temperature",
+      "value": "50.4°C"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #3",
+      "sensor_type": "Temperature",
+      "value": "49.6°C"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Core #4",
+      "sensor_type": "Temperature",
+      "value": "48.3°C"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "GFX",
+      "sensor_type": "Voltage",
+      "value": "0.8"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "GFX",
+      "sensor_type": "Temperature",
+      "value": "40.2°C"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "GFX",
+      "sensor_type": "Clock",
+      "value": "200.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "GFX",
+      "sensor_type": "Load",
+      "value": "7.4%"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Fabric",
+      "sensor_type": "Clock",
+      "value": "1276.7"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Uncore",
+      "sensor_type": "Clock",
+      "value": "300.0"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Memory",
+      "sensor_type": "Clock",
+      "value": "1290.1"
+    },
+    {
+      "hardware": "AMD Ryzen 3 3200G with Radeon Vega Graphics",
+      "hardware_type": "Cpu",
+      "sensor": "Displays",
+      "sensor_type": "Factor",
+      "value": "2.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tCKAVGmin (Minimum Cycle Time)",
+      "sensor_type": "Timing",
+      "value": "0.8"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tCKAVGmax (Maximum Cycle Time)",
+      "sensor_type": "Timing",
+      "value": "1.6"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tAA (CAS Latency Time)",
+      "sensor_type": "Timing",
+      "value": "13.8"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRCD (RAS to CAS Delay Time)",
+      "sensor_type": "Timing",
+      "value": "13.8"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRP (Row Precharge Delay Time)",
+      "sensor_type": "Timing",
+      "value": "13.8"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRAS (Active to Precharge Delay Time)",
+      "sensor_type": "Timing",
+      "value": "32.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRC (Active to Active/Refresh Delay Time)",
+      "sensor_type": "Timing",
+      "value": "45.8"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRFC1 (Refresh Recovery Delay Time)",
+      "sensor_type": "Timing",
+      "value": "550.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRFC2 (Refresh Recovery Delay Time)",
+      "sensor_type": "Timing",
+      "value": "350.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRFC4 (Refresh Recovery Delay Time)",
+      "sensor_type": "Timing",
+      "value": "260.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tFAW (Four Activate Window Time)",
+      "sensor_type": "Timing",
+      "value": "30.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRRD_S (Activate to Activate Delay Time)",
+      "sensor_type": "Timing",
+      "value": "5.3"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tRRD_L (Activate to Activate Delay Time)",
+      "sensor_type": "Timing",
+      "value": "6.4"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tCCD_L (CAS to CAS Delay Time)",
+      "sensor_type": "Timing",
+      "value": "5.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tWR (Write Recovery Time)",
+      "sensor_type": "Timing",
+      "value": "15.0"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tWTR_S (Write to Read Time)",
+      "sensor_type": "Timing",
+      "value": "2.5"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "tWTR_L (Write to Read Time)",
+      "sensor_type": "Timing",
+      "value": "7.5"
+    },
+    {
+      "hardware": "A-DATA Technology - AX4U32008G16A-SBKD3 (#3)",
+      "hardware_type": "Memory",
+      "sensor": "Capacity",
+      "sensor_type": "Data",
+      "value": "16.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Memory Total",
+      "sensor_type": "SmallData",
+      "value": "2048.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "Fullscreen FPS",
+      "sensor_type": "Factor",
+      "value": "-1.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Dedicated Memory Total",
+      "sensor_type": "SmallData",
+      "value": "2032.6"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Dedicated Memory Free",
+      "sensor_type": "SmallData",
+      "value": "1206.3"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Dedicated Memory Used",
+      "sensor_type": "SmallData",
+      "value": "826.3"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Shared Memory Used",
+      "sensor_type": "SmallData",
+      "value": "89.4"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Shared Memory Free",
+      "sensor_type": "SmallData",
+      "value": "2942.9"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Shared Memory Total",
+      "sensor_type": "SmallData",
+      "value": "3032.3"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D 3D",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D High Priority Compute",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Compute 0",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Compute 1",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Video JPEG",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Video Codec 0",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Copy",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Timer 0",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "D3D Security 1",
+      "sensor_type": "Load",
+      "value": "0.0%"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Memory Used",
+      "sensor_type": "SmallData",
+      "value": "825.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Memory Free",
+      "sensor_type": "SmallData",
+      "value": "1223.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Core",
+      "sensor_type": "Clock",
+      "value": "200.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Memory",
+      "sensor_type": "Clock",
+      "value": "1333.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Core",
+      "sensor_type": "Voltage",
+      "value": "0.0"
+    },
+    {
+      "hardware": "AMD Radeon(TM) Vega 8 Graphics",
+      "hardware_type": "GpuAmd",
+      "sensor": "GPU Core",
+      "sensor_type": "Load",
+      "value": "20.0%"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Composite Temperature",
+      "sensor_type": "Temperature",
+      "value": "0.0°C"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Warning Temperature",
+      "sensor_type": "Temperature",
+      "value": "0.0°C"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Critical Temperature",
+      "sensor_type": "Temperature",
+      "value": "0.0°C"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Life",
+      "sensor_type": "Level",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Data Read",
+      "sensor_type": "Data",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Data Written",
+      "sensor_type": "Data",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Power On Count",
+      "sensor_type": "Factor",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Power On Hours",
+      "sensor_type": "Factor",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Total Space",
+      "sensor_type": "Data",
+      "value": "256.1"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Available Spare",
+      "sensor_type": "Level",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Available Spare Threshold",
+      "sensor_type": "Level",
+      "value": "0.0"
+    },
+    {
+      "hardware": "ADATA LEGEND 710",
+      "hardware_type": "Storage",
+      "sensor": "Percentage Used",
+      "sensor_type": "Level",
+      "value": "0.0"
+    }
+  ],
+  "debug_file": "C:\\Users\\willy\\Videos\\Nova pasta\\modules\\hardware_debug.txt",
+  "log_file": "C:\\Users\\willy\\Videos\\Nova pasta\\modules\\hardware_service.log",
+  "dll_path": "",
+  "search_paths": [
+    "C:\\Users\\willy\\Videos\\Nova pasta\\modules",
+    "C:\\Users\\willy\\Videos\\Nova pasta\\modules\\hardware_host",
+    "C:\\Users\\willy\\Videos\\Nova pasta\\modules\\hardware_host\\bin",
+    "C:\\Users\\willy\\Videos\\Nova pasta\\modules\\hardware_host\\obj"
+  ],
+  "collected_at": "21/07/2026 15:43:32"
+}

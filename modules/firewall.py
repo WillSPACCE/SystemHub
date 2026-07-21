@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from typing import List, Dict
@@ -58,6 +59,37 @@ class FirewallManager:
             f"name={name}",
             "protocol=TCP",
             f"localport={port}",
+            f"dir={dir_flag}",
+            "action=allow",
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+
+    def allow_program(self, program_path: str, direction: str = "Entrada") -> None:
+        if not self._is_windows:
+            raise OSError("Este recurso é compatível com Windows.")
+        if not program_path or not str(program_path).strip():
+            raise ValueError("Informe o caminho do executável.")
+        direction_value = str(direction).strip().lower()
+        dir_flag = "out" if direction_value in {"saída", "saida", "out"} else "in"
+        name = f"PythonUtilityProgram_{os.path.basename(program_path)}_{dir_flag}"
+        cmd = [
+            "netsh",
+            "advfirewall",
+            "firewall",
+            "add",
+            "rule",
+            f"name={name}",
+            "protocol=any",
+            f"program={program_path}",
             f"dir={dir_flag}",
             "action=allow",
         ]

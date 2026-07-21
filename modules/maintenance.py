@@ -28,6 +28,8 @@ class MaintenanceCoordinator:
         settings: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Any] = None,
         selected_programs: Optional[List[str]] = None,
+        include_defender: bool = True,
+        run_defender_only: bool = False,
     ) -> Dict[str, Any]:
         started_at = time.perf_counter()
         settings = settings or {}
@@ -37,18 +39,25 @@ class MaintenanceCoordinator:
         if not initial_payload:
             initial_payload = self._gather_payload()
 
-        if progress_callback:
-            progress_callback("Limpando arquivos", "running", "Iniciando limpeza selecionada...", 15)
-        cleanup_results = self.cleaner.run_cleanup(selected_ids=selected_ids, progress_callback=progress_callback)
-        recovered_bytes = sum(item.get("freed_bytes", 0) for item in cleanup_results if isinstance(item, dict))
-
-        if progress_callback:
-            progress_callback("Defender", "running", "Executando verificação rápida do Microsoft Defender...", 45)
-        defender_result = self._run_defender_check()
-        if defender_result:
-            cleanup_results.append(defender_result)
-            if defender_result.get("status") == "OK":
-                recovered_bytes += 0
+        cleanup_results: List[Dict[str, Any]] = []
+        recovered_bytes = 0
+        if run_defender_only:
+            if progress_callback:
+                progress_callback("Defender", "running", "Executando verificação rápida do Microsoft Defender...", 15)
+            defender_result = self._run_defender_check()
+            if defender_result:
+                cleanup_results.append(defender_result)
+        else:
+            if progress_callback:
+                progress_callback("Limpando arquivos", "running", "Iniciando limpeza selecionada...", 15)
+            cleanup_results = self.cleaner.run_cleanup(selected_ids=selected_ids, progress_callback=progress_callback)
+            recovered_bytes = sum(item.get("freed_bytes", 0) for item in cleanup_results if isinstance(item, dict))
+            if include_defender:
+                if progress_callback:
+                    progress_callback("Defender", "running", "Executando verificação rápida do Microsoft Defender...", 45)
+                defender_result = self._run_defender_check()
+                if defender_result:
+                    cleanup_results.append(defender_result)
 
         if progress_callback:
             progress_callback("Atualizando informações", "running", "Coletando dados finais após a limpeza...", 70)

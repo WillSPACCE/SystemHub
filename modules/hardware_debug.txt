@@ -1,39 +1,39 @@
 ====================================
 Resumo da coleta
 ====================================
-Coletado em: 18/07/2026 22:20:05
+Coletado em: 21/07/2026 16:08:35
 DLL: 
 ====================================
 Sensores:
 Tipo: Cpu
 Sensor: CPU Core #1
 Tipo do Sensor: Load
-Valor: 84.6%
+Valor: 90.9%
 ====================================
 Tipo: Cpu
 Sensor: CPU Core #2
 Tipo do Sensor: Load
-Valor: 76.9%
+Valor: 72.7%
 ====================================
 Tipo: Cpu
 Sensor: CPU Core #3
 Tipo do Sensor: Load
-Valor: 92.3%
+Valor: 54.5%
 ====================================
 Tipo: Cpu
 Sensor: CPU Core #4
 Tipo do Sensor: Load
-Valor: 69.2%
+Valor: 81.8%
 ====================================
 Tipo: Cpu
 Sensor: CPU Total
 Tipo do Sensor: Load
-Valor: 80.8%
+Valor: 75.0%
 ====================================
 Tipo: Cpu
 Sensor: CPU Core Max
 Tipo do Sensor: Load
-Valor: 92.3%
+Valor: 90.9%
 ====================================
 Tipo: Cpu
 Sensor: Cores (Average)
@@ -73,7 +73,7 @@ Valor: 0.0
 Tipo: Cpu
 Sensor: Core #3 VID
 Tipo do Sensor: Voltage
-Valor: 1.4
+Valor: 1.3
 ====================================
 Tipo: Cpu
 Sensor: Core #4 (Effective)
@@ -88,7 +88,7 @@ Valor: 1.4
 Tipo: Cpu
 Sensor: Core (Tctl/Tdie)
 Tipo do Sensor: Temperature
-Valor: 41.3°C
+Valor: 52.9°C
 ====================================
 Tipo: Cpu
 Sensor: Core (SVI2 TFN)
@@ -103,42 +103,42 @@ Valor: 100.0
 Tipo: Cpu
 Sensor: TDC
 Tipo do Sensor: Current
-Valor: 4.6
+Valor: 14.9
 ====================================
 Tipo: Cpu
 Sensor: EDC
 Tipo do Sensor: Current
-Valor: 93.8
+Valor: 72.8
 ====================================
 Tipo: Cpu
 Sensor: SoC
 Tipo do Sensor: Current
-Valor: 4.2
+Valor: 5.3
 ====================================
 Tipo: Cpu
 Sensor: SoC
 Tipo do Sensor: Power
-Valor: 3.8 W
+Valor: 5.5 W
 ====================================
 Tipo: Cpu
 Sensor: Core #1
 Tipo do Sensor: Temperature
-Valor: 29.0°C
+Valor: 46.8°C
 ====================================
 Tipo: Cpu
 Sensor: Core #2
 Tipo do Sensor: Temperature
-Valor: 29.1°C
+Valor: 49.4°C
 ====================================
 Tipo: Cpu
 Sensor: Core #3
 Tipo do Sensor: Temperature
-Valor: 29.3°C
+Valor: 48.4°C
 ====================================
 Tipo: Cpu
 Sensor: Core #4
 Tipo do Sensor: Temperature
-Valor: 29.3°C
+Valor: 45.9°C
 ====================================
 Tipo: Cpu
 Sensor: GFX
@@ -148,22 +148,22 @@ Valor: 0.8
 Tipo: Cpu
 Sensor: GFX
 Tipo do Sensor: Temperature
-Valor: 27.5°C
+Valor: 39.7°C
 ====================================
 Tipo: Cpu
 Sensor: GFX
 Tipo do Sensor: Clock
-Valor: 200.1
+Valor: 200.8
 ====================================
 Tipo: Cpu
 Sensor: GFX
 Tipo do Sensor: Load
-Valor: 4.1%
+Valor: 6.0%
 ====================================
 Tipo: Cpu
 Sensor: Fabric
 Tipo do Sensor: Clock
-Valor: 768.6
+Valor: 1185.6
 ====================================
 Tipo: Cpu
 Sensor: Uncore
@@ -173,7 +173,7 @@ Valor: 300.0
 Tipo: Cpu
 Sensor: Memory
 Tipo do Sensor: Clock
-Valor: 784.5
+Valor: 1208.2
 ====================================
 Tipo: Cpu
 Sensor: Displays
@@ -288,22 +288,22 @@ Valor: 2032.6
 Tipo: GpuAmd
 Sensor: D3D Dedicated Memory Free
 Tipo do Sensor: SmallData
-Valor: 1593.2
+Valor: 1225.5
 ====================================
 Tipo: GpuAmd
 Sensor: D3D Dedicated Memory Used
 Tipo do Sensor: SmallData
-Valor: 439.4
+Valor: 807.1
 ====================================
 Tipo: GpuAmd
 Sensor: D3D Shared Memory Used
 Tipo do Sensor: SmallData
-Valor: 66.1
+Valor: 73.3
 ====================================
 Tipo: GpuAmd
 Sensor: D3D Shared Memory Free
 Tipo do Sensor: SmallData
-Valor: 2966.2
+Valor: 2959.0
 ====================================
 Tipo: GpuAmd
 Sensor: D3D Shared Memory Total
@@ -358,12 +358,12 @@ Valor: 0.0%
 Tipo: GpuAmd
 Sensor: GPU Memory Used
 Tipo do Sensor: SmallData
-Valor: 434.0
+Valor: 806.0
 ====================================
 Tipo: GpuAmd
 Sensor: GPU Memory Free
 Tipo do Sensor: SmallData
-Valor: 1614.0
+Valor: 1242.0
 ====================================
 Tipo: GpuAmd
 Sensor: GPU Core
@@ -383,7 +383,7 @@ Valor: 0.0
 Tipo: GpuAmd
 Sensor: GPU Core
 Tipo do Sensor: Load
-Valor: 22.0%
+Valor: 2.0%
 ====================================
 Tipo: Storage
 Sensor: Composite Temperature

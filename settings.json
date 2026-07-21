@@ -1,4 +1,5 @@
 {
   "periodic_enabled": false,
-  "interval_seconds": 0
+  "interval_seconds": 0,
+  "theme_mode": "dark"
 }

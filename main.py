@@ -1,12 +1,13 @@
 import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 from datetime import datetime
 import json
 import os
+import re
+import subprocess
 import sys
 import time
-import re
 
 from modules.firewall import FirewallManager
 from modules.cleanup import CleanupManager
@@ -18,7 +19,7 @@ from modules.report import ReportGenerator, format_brazilian_date, get_latest_re
 from modules.settings import ReportSettingsManager
 
 
-THEME = {
+THEME_LIGHT = {
     "bg": "#F6F8FC",
     "card_bg": "#FFFFFF",
     "text_primary": "#111827",
@@ -26,7 +27,7 @@ THEME = {
     "accent_blue": "#2563EB",
     "accent_green": "#22C55E",
     "accent_purple": "#7C3AED",
-    "accent_orange": "#F97316",
+    "accent_orange": "#089CFF",
     "muted": "#E5E7EB",
     "shadow": "#E9EEF5",
     "shadow_hover": "#DBEAFE",
@@ -40,6 +41,35 @@ THEME = {
     "sidebar_width": 230,
     "card_radius": 20,
 }
+
+THEME_DARK = {
+    "bg": "#07111F",
+    "card_bg": "#0F172A",
+    "text_primary": "#F8FAFC",
+    "text_secondary": "#94A3B8",
+    "accent_blue": "#60A5FA",
+    "accent_green": "#34D399",
+    "accent_purple": "#A78BFA",
+    "accent_orange": "#38BDF8",
+    "muted": "#1E293B",
+    "shadow": "#020617",
+    "shadow_hover": "#334155",
+    "sidebar_active_bg": "#172554",
+    "button_primary_bg": "#60A5FA",
+    "button_secondary_bg": "#111827",
+    "button_hover_bg": "#1D4ED8",
+    "button_border": "#334155",
+    "tooltip_bg": "#020617",
+    "tooltip_fg": "#F8FAFC",
+    "sidebar_width": 230,
+    "card_radius": 20,
+}
+
+THEME = dict(THEME_LIGHT)
+
+
+def get_theme_values(mode: str = "light"):
+    return THEME_DARK if str(mode).lower() == "dark" else THEME_LIGHT
 
 
 def get_font(size_base, width=None, height=None, min_size=10, max_size=34):
@@ -135,6 +165,7 @@ class RoundedCard(tk.Canvas):
         self.hover_text = ""
         self.hovered = False
         self.divider_id = None
+        self.border_id = None
         self.inner_frame = tk.Frame(self, bg=THEME['card_bg'], padx=14, pady=12)
         self.inner_frame.pack_propagate(False)
         self.bind("<Enter>", self._on_hover_enter)
@@ -180,11 +211,31 @@ class RoundedCard(tk.Canvas):
             self.tooltip_window.destroy()
             self.tooltip_window = None
 
+    def refresh_theme(self):
+        if not self.winfo_exists():
+            return
+        self.configure(bg=THEME['bg'])
+        self.inner_frame.configure(bg=THEME['card_bg'])
+        try:
+            if self.shadow_id is not None:
+                self.itemconfigure(self.shadow_id, fill=THEME['shadow_hover'] if self.hovered else THEME['shadow'])
+            if self.bg_id is not None:
+                self.itemconfigure(self.bg_id, fill=THEME['card_bg'])
+            if self.divider_id is not None:
+                self.itemconfigure(self.divider_id, fill=THEME['muted'])
+            if self.border_id is not None:
+                self.itemconfigure(self.border_id, outline=self._get_card_border_color(), width=2 if self._is_dark_theme() else 1)
+            if self.text_id is not None:
+                self.itemconfigure(self.text_id, fill=self.accent)
+        except Exception:
+            pass
+
     def _create_card(self, width, height):
         self.config(width=width, height=height)
         radius = THEME.get('card_radius', 14)
         self.shadow_id = self._create_shadow(6, 8, max(width - 2, 0), max(height - 2, 0), radius=radius)
         self.bg_id = self._create_rounded_rectangle(0, 0, max(width - 10, 0), max(height - 10, 0), radius=radius - 2, fill=THEME['card_bg'], outline="")
+        self.border_id = self._create_rounded_rectangle(1, 1, max(width - 11, 0), max(height - 11, 0), radius=radius - 3, fill="", outline=self._get_card_border_color(), width=2 if self._is_dark_theme() else 1)
         if self.title:
             self.text_id = self.create_text(18, 20, text=self.title, anchor="nw", font=("Segoe UI", 13, "bold"), fill=self.accent)
             if self.divider_id is None:
@@ -210,6 +261,10 @@ class RoundedCard(tk.Canvas):
             self.coords(self.shadow_id, *self._rounded_rect_points(6, 8, max(width - 2, 0), max(height - 2, 0), 18))
         if self.bg_id is not None:
             self.coords(self.bg_id, *self._rounded_rect_points(0, 0, max(width - 10, 0), max(height - 10, 0), 16))
+        if self.border_id is not None:
+            card_radius = max(THEME.get('card_radius', 14) - 3, 8)
+            self.coords(self.border_id, *self._rounded_rect_points(1, 1, max(width - 11, 0), max(height - 11, 0), card_radius))
+            self.itemconfigure(self.border_id, outline=self._get_card_border_color(), width=2 if self._is_dark_theme() else 1)
         if self.text_id is not None:
             self.coords(self.text_id, 18, 20)
             if self.divider_id is None:
@@ -233,6 +288,12 @@ class RoundedCard(tk.Canvas):
                 self.inner_frame.configure(width=content_width)
             except Exception:
                 pass
+
+    def _is_dark_theme(self):
+        return str(THEME.get('bg', '')).lower() in {"#07111f", "#0f172a", "#111827", "#0b1220"}
+
+    def _get_card_border_color(self):
+        return THEME['accent_blue'] if self._is_dark_theme() else THEME['shadow_hover']
 
     def _rounded_rect_points(self, x1, y1, x2, y2, radius=18):
         return [
@@ -260,17 +321,18 @@ class RoundedCard(tk.Canvas):
 
 
 class ProgressBar(tk.Canvas):
-    def __init__(self, parent, width: int = 280, height: int = 8, value: float = 0.0, color: str = THEME["accent_blue"], show_text: bool = True):
-        adjusted_height = max(height, 18) if show_text else max(height, 8)
+    def __init__(self, parent, width: int = 280, height: int = 8, value: float = 0.0, color: str | None = None, show_text: bool = True):
+        adjusted_height = max(height, 12) if show_text else max(height, 8)
         super().__init__(parent, width=width, height=adjusted_height, bg=THEME['bg'], bd=0, highlightthickness=0)
         self.width = width
         self.height = adjusted_height
-        self.color = color
+        self.color = color or THEME["accent_blue"]
         self.show_text = show_text
         self._value = 0.0
+        font_size = 7 if show_text else 9
         self.bg_rect = self._create_rounded_rectangle(0, 0, width, self.height, radius=self.height // 2, fill=THEME['muted'], outline="")
-        self.fill_rect = self._create_rounded_rectangle(0, 0, 0, self.height, radius=self.height // 2, fill=color, outline="")
-        self.text = self.create_text(width // 2, self.height // 2, anchor="center", text="0%", fill=THEME['text_primary'], font=("Segoe UI", 9, "bold"))
+        self.fill_rect = self._create_rounded_rectangle(0, 0, 0, self.height, radius=self.height // 2, fill=self.color, outline="")
+        self.text = self.create_text(width // 2, self.height // 2, anchor="center", text="0%", fill=THEME['text_primary'], font=("Segoe UI", font_size, "bold"))
         self.set_value(value)
 
     def _create_rounded_rectangle(self, x1, y1, x2, y2, radius=8, **kwargs):
@@ -290,6 +352,14 @@ class ProgressBar(tk.Canvas):
             x1, y1,
         ]
         return self.create_polygon(points, smooth=True, **kwargs)
+
+    def refresh_theme(self):
+        if not self.winfo_exists():
+            return
+        self.configure(bg=THEME['bg'])
+        self.itemconfigure(self.bg_rect, fill=THEME['muted'])
+        self.itemconfigure(self.fill_rect, fill=self.color)
+        self.itemconfigure(self.text, fill=THEME['text_primary'])
 
     def set_value(self, value: float):
         value = max(0.0, min(100.0, value if value is not None else 0.0))
@@ -368,6 +438,8 @@ class App(tk.Tk):
 
         self.data = {}
         self.selected_page = "Dashboard"
+        self.theme_mode = "light"
+        self.theme_toggle_button = None
         self.nav_buttons = {}
         self.nav_indicators = {}
         self.dashboard_cards = []
@@ -375,6 +447,8 @@ class App(tk.Tk):
         self.quick_status_states = []
         self._dashboard_structure_ready = False
         self._quick_status_ready = False
+        self._dashboard_needs_refresh = True
+        self._info_needs_refresh = True
         self._loading_active = False
         self._loading_frame = 0
         self._last_window_size = (0, 0)
@@ -387,6 +461,9 @@ class App(tk.Tk):
         self.selected_programs_for_report = []
         self.maintenance_coordinator.email_service.save_config(self._report_settings)
 
+        self._settings = {}
+        self._load_settings()
+        self._apply_theme(self._settings.get("theme_mode", "light"), initial=True)
         try:
             self._configure_styles()
         except Exception:
@@ -401,10 +478,8 @@ class App(tk.Tk):
         self.show_page("Dashboard")
         self.after(300, self._run_initial_diagnostics)
         # carregamento de settings e timer periódico
-        self._settings = {}
         self._periodic_stop = threading.Event()
         self.collector = HardwareCollectorService()
-        self._load_settings()
         self._start_periodic_timer()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -422,6 +497,165 @@ class App(tk.Tk):
 
     def _font(self, size_base, min_size=None, max_size=None, weight="normal", width=None, height=None):
         return ("Segoe UI", get_font(size_base, width=width or self.winfo_width(), height=height or self.winfo_height(), min_size=min_size or 10, max_size=max_size or 34))
+
+    def _set_theme_values(self, theme_name: str):
+        global THEME
+        theme_values = get_theme_values(theme_name)
+        THEME.clear()
+        THEME.update(theme_values)
+        self.theme_mode = str(theme_name).lower()
+
+    def _apply_theme(self, theme_name: str = "light", initial: bool = False):
+        self._set_theme_values(theme_name)
+        self._settings["theme_mode"] = self.theme_mode
+        if not initial:
+            self._save_settings()
+        if hasattr(self, "configure"):
+            self.configure(bg=THEME['bg'])
+        if hasattr(self, "sidebar"):
+            self.sidebar.configure(bg=THEME['card_bg'])
+        if hasattr(self, "content"):
+            self.content.configure(bg=THEME['bg'])
+        if hasattr(self, "footer_label"):
+            self.footer_label.configure(bg=THEME['bg'])
+        if hasattr(self, "footer_status"):
+            self.footer_status.configure(bg=THEME['bg'])
+        if hasattr(self, "footer_reading"):
+            self.footer_reading.configure(bg=THEME['bg'])
+        if hasattr(self, "theme_status_label"):
+            self.theme_status_label.configure(text=f"Tema: {'Escuro' if self.theme_mode == 'dark' else 'Claro'}", bg=THEME['card_bg'], fg=THEME['text_primary'])
+        if self.theme_toggle_button is not None and self.theme_toggle_button.winfo_exists():
+            self.theme_toggle_button.configure(text="🌙" if self.theme_mode == "dark" else "☀", fg=THEME['accent_blue'], bg=THEME['card_bg'], highlightbackground=THEME['accent_blue'], highlightcolor=THEME['accent_blue'])
+        self._refresh_theme_for_tree(self)
+        self._configure_styles()
+
+    def _refresh_theme_for_tree(self, widget):
+        if widget is None or not hasattr(widget, "winfo_exists") or not widget.winfo_exists():
+            return
+        try:
+            self._apply_theme_to_widget(widget)
+        except Exception:
+            pass
+        try:
+            for child in widget.winfo_children():
+                self._refresh_theme_for_tree(child)
+        except Exception:
+            pass
+
+    def _apply_theme_to_widget(self, widget):
+        if isinstance(widget, RoundedCard):
+            widget.refresh_theme()
+            return
+        if isinstance(widget, ProgressBar):
+            widget.refresh_theme()
+            return
+        if isinstance(widget, tk.Frame):
+            is_page = hasattr(self, "pages") and widget in getattr(self, "pages", {}).values()
+            widget.configure(bg=THEME['bg'] if is_page else THEME['card_bg'])
+        try:
+            bg_key = "background" if "background" in widget.keys() else "bg" if "bg" in widget.keys() else None
+            fg_key = "foreground" if "foreground" in widget.keys() else "fg" if "fg" in widget.keys() else None
+            if bg_key:
+                current_bg = widget.cget(bg_key)
+                widget.configure(**{bg_key: self._theme_color(current_bg, "background")})
+            if fg_key:
+                current_fg = widget.cget(fg_key)
+                widget.configure(**{fg_key: self._resolve_widget_foreground(widget, current_fg)})
+        except Exception:
+            pass
+        for attr in ["activebackground", "selectcolor", "highlightbackground", "highlightcolor"]:
+            if attr in widget.keys():
+                try:
+                    current = widget.cget(attr)
+                    widget.configure(**{attr: self._theme_color(current, attr)})
+                except Exception:
+                    pass
+
+    def _theme_color(self, current_value, option_name):
+        if not current_value:
+            return current_value
+        light_theme = get_theme_values("light")
+        dark_theme = get_theme_values("dark")
+        target_theme = light_theme if self.theme_mode == "light" else dark_theme
+        mapping = {
+            "background": {
+                light_theme['bg']: target_theme['bg'],
+                dark_theme['bg']: target_theme['bg'],
+                light_theme['card_bg']: target_theme['card_bg'],
+                dark_theme['card_bg']: target_theme['card_bg'],
+                light_theme['muted']: target_theme['muted'],
+                dark_theme['muted']: target_theme['muted'],
+                light_theme['sidebar_active_bg']: target_theme['sidebar_active_bg'],
+                dark_theme['sidebar_active_bg']: target_theme['sidebar_active_bg'],
+                light_theme['button_secondary_bg']: target_theme['button_secondary_bg'],
+                dark_theme['button_secondary_bg']: target_theme['button_secondary_bg'],
+                light_theme['button_hover_bg']: target_theme['button_hover_bg'],
+                dark_theme['button_hover_bg']: target_theme['button_hover_bg'],
+                light_theme['shadow']: target_theme['shadow'],
+                dark_theme['shadow']: target_theme['shadow'],
+            },
+            "foreground": {
+                light_theme['text_primary']: target_theme['text_primary'],
+                dark_theme['text_primary']: target_theme['text_primary'],
+                light_theme['text_secondary']: target_theme['text_secondary'],
+                dark_theme['text_secondary']: target_theme['text_secondary'],
+                light_theme['tooltip_fg']: target_theme['tooltip_fg'],
+                dark_theme['tooltip_fg']: target_theme['tooltip_fg'],
+            },
+            "activebackground": {
+                light_theme['bg']: target_theme['bg'],
+                dark_theme['bg']: target_theme['bg'],
+                light_theme['card_bg']: target_theme['card_bg'],
+                dark_theme['card_bg']: target_theme['card_bg'],
+                light_theme['button_hover_bg']: target_theme['button_hover_bg'],
+                dark_theme['button_hover_bg']: target_theme['button_hover_bg'],
+                light_theme['sidebar_active_bg']: target_theme['sidebar_active_bg'],
+                dark_theme['sidebar_active_bg']: target_theme['sidebar_active_bg'],
+            },
+            "selectcolor": {
+                light_theme['accent_blue']: target_theme['accent_blue'],
+                dark_theme['accent_blue']: target_theme['accent_blue'],
+                light_theme['card_bg']: target_theme['card_bg'],
+                dark_theme['card_bg']: target_theme['card_bg'],
+                light_theme['bg']: target_theme['bg'],
+                dark_theme['bg']: target_theme['bg'],
+            },
+            "highlightbackground": {
+                light_theme['muted']: target_theme['muted'],
+                dark_theme['muted']: target_theme['muted'],
+                light_theme['shadow_hover']: target_theme['shadow_hover'],
+                dark_theme['shadow_hover']: target_theme['shadow_hover'],
+                light_theme['shadow']: target_theme['shadow'],
+                dark_theme['shadow']: target_theme['shadow'],
+            },
+            "highlightcolor": {
+                light_theme['accent_blue']: target_theme['accent_blue'],
+                dark_theme['accent_blue']: target_theme['accent_blue'],
+                light_theme['card_bg']: target_theme['card_bg'],
+                dark_theme['card_bg']: target_theme['card_bg'],
+            },
+        }
+        return mapping.get(option_name, {}).get(current_value, current_value)
+
+    def _resolve_widget_foreground(self, widget, current_fg):
+        if not current_fg:
+            return current_fg
+        mapped_fg = self._theme_color(current_fg, "foreground")
+        if mapped_fg != current_fg:
+            return mapped_fg
+
+        if current_fg in {"#FFFFFF", "#F8FAFC", "#FCFCFC", "#FEFEFE", "#FAFAFA"}:
+            try:
+                bg_value = widget.cget("background") if "background" in widget.keys() else None
+                if not bg_value and "bg" in widget.keys():
+                    bg_value = widget.cget("bg")
+                if bg_value in {THEME['bg'], THEME['card_bg'], get_theme_values("light")["bg"], get_theme_values("light")["card_bg"], get_theme_values("dark")["bg"], get_theme_values("dark")["card_bg"]}:
+                    return THEME['text_primary']
+            except Exception:
+                pass
+        if current_fg in {"#000000", "#111111", "#0F172A"}:
+            return THEME['text_primary']
+        return current_fg
 
     def _configure_styles(self):
         style = ttk.Style(self)
@@ -468,20 +702,38 @@ class App(tk.Tk):
         # Navigation items (ordered)
         nav_items = [
             ("Dashboard", "🏠", "Dashboard", "Visão geral do hardware"),
-            ("Hardware", "🖥", "Hardware", "Informações de hardware"),
-            ("Performance", "📈", "Performance", "Monitoramento de performance"),
             ("Firewall", "🛡", "Firewall", "Gerenciar firewall do Windows"),
             ("Aplicativos", "📦", "Aplicativos", "Gerenciar aplicativos"),
             ("Limpeza", "🧹", "Limpeza", "Limpar arquivos temporários"),
-            ("Ferramentas", "🧰", "Ferramentas", "Ferramentas utilitárias"),
+            ("Ferramentas", "🧰", "Ferramentas", "Ferramentas utilitárias e análise de hardware"),
             ("Configurações", "⚙", "Configurações", "Ajustes do aplicativo"),
-            ("Email", "✉", "E-mail", "Configurar envio de relatórios por e-mail"),
         ]
         for key, icon, label, tip in nav_items:
             self._create_nav_button(key, icon, label, tip)
 
         spacer = tk.Frame(self.sidebar, bg=THEME['card_bg'])
         spacer.pack(fill="both", expand=True)
+
+        theme_toggle_frame = tk.Frame(self.sidebar, bg=THEME['card_bg'])
+        theme_toggle_frame.pack(fill="x", padx=12, pady=(0, 8))
+        self.theme_toggle_button = tk.Button(
+            theme_toggle_frame,
+            text="☀",
+            width=3,
+            height=1,
+            bg=THEME['card_bg'],
+            fg=THEME['accent_blue'],
+            bd=1,
+            relief="solid",
+            highlightthickness=1,
+            highlightbackground=THEME['accent_blue'],
+            highlightcolor=THEME['accent_blue'],
+            font=self._font(13, min_size=11, max_size=15, weight="bold"),
+            command=self._toggle_theme,
+            cursor="hand2",
+        )
+        self.theme_toggle_button.pack(anchor="w")
+        Tooltip(self.theme_toggle_button, "Alternar tema")
 
         version_label = tk.Label(self.sidebar, text="Versão 1.0", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12))
         version_label.pack(padx=18, pady=16, anchor="w")
@@ -633,10 +885,12 @@ class App(tk.Tk):
 
         self.pages = {}
         self.pages["Dashboard"] = tk.Frame(self.page_container, bg=THEME['bg'])
-        self.pages["Informações"] = tk.Frame(self.page_container, bg=THEME['bg'])
+        self.pages["Hardware"] = tk.Frame(self.page_container, bg=THEME['bg'])
+        self.pages["Informações"] = self.pages["Hardware"]
         self.pages["Firewall"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Aplicativos"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Limpeza"] = tk.Frame(self.page_container, bg=THEME['bg'])
+        self.pages["Ferramentas"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Configurações"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Email"] = tk.Frame(self.page_container, bg=THEME['bg'])
         self.pages["Regras"] = tk.Frame(self.page_container, bg=THEME['bg'])
@@ -653,7 +907,6 @@ class App(tk.Tk):
         self._build_rules_page()
         self._build_cleanup_page()
         self._build_settings_page()
-        self._build_email_settings_page()
 
     def _on_page_inner_configure(self, event=None):
         self.page_canvas.configure(scrollregion=self.page_canvas.bbox("all"))
@@ -718,14 +971,21 @@ class App(tk.Tk):
         }
         metrics_row = tk.Frame(self.quick_cards_frame, bg=THEME['bg'])
         metrics_row.pack(fill="x", pady=0)
-        items = [("cpu_temp", ("🌡", "Temperatura CPU", THEME['accent_green'])), ("cpu_usage", ("⚙", "Uso CPU", THEME['accent_green'])), ("ram_usage", ("🧠", "Uso RAM", THEME['accent_purple'])), ("ssd_temp", ("💾", "Temperatura SSD", THEME['accent_blue'])), ("ssd_health", ("❤️", "Saúde SSD", THEME['accent_blue'])), ("ssd_usage", ("📁", "Uso SSD", THEME['accent_blue']))]
+        items = [
+            ("cpu_temp", ("💻", "CPU • Temperatura", "#2563EB")),
+            ("cpu_usage", ("💻", "CPU • Uso", "#2563EB")),
+            ("ram_usage", ("🧠", "RAM • Uso", "#7C3AED")),
+            ("ssd_temp", ("💾", "SSD • Temperatura", "#0f766e")),
+            ("ssd_health", ("💾", "SSD • Saúde", "#0f766e")),
+            ("ssd_usage", ("💾", "SSD • Uso", "#0f766e")),
+        ]
         for index, (key, (icon, label, color)) in enumerate(items):
             metrics_row.grid_columnconfigure(index, weight=1)
             card = RoundedCard(metrics_row, title="", accent=color, width=180, height=140)
             card.grid(row=0, column=index, sticky="nsew", padx=8, pady=2)
             inner = card.inner_frame
             inner.configure(bg=THEME['card_bg'])
-            icon_label = tk.Label(inner, text=icon, bg=THEME['card_bg'], fg=color, font=self._font(12, min_size=11, max_size=14, weight="bold"))
+            icon_label = tk.Label(inner, text=icon, bg=THEME['card_bg'], fg=color, font=self._font(32, min_size=28, max_size=36, weight="bold"))
             icon_label.pack(anchor="w")
             value_label = tk.Label(inner, text="N/A", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(12, min_size=11, max_size=14, weight="bold"))
             value_label.pack(anchor="w", pady=(2, 0))
@@ -733,6 +993,8 @@ class App(tk.Tk):
             hint_label.pack(anchor="w", pady=(4, 0))
             bar = ProgressBar(inner, width=180, height=8, value=0.0, color=color, show_text=False)
             bar.pack(fill="x", pady=(8, 0))
+            self.quick_metrics[key] = {"icon": icon_label, "value": value_label, "label": hint_label, "bar": bar}
+
             self.quick_metrics[key] = {"icon": icon_label, "value": value_label, "label": hint_label, "bar": bar}
 
     def _build_dashboard_cpu_card(self):
@@ -795,7 +1057,7 @@ class App(tk.Tk):
 
     def _build_dashboard_ssd_card(self):
         parent = self.storage_card.inner_frame
-        self.lbl_ssd_model = tk.Label(parent, text="Não disponível", bg=THEME["card_bg"], fg=THEME["text_primary"], font=self._font(12, min_size=11, max_size=15, weight="bold"), wraplength=280, justify="left")
+        self.lbl_ssd_model = tk.Label(parent, text="SSD", bg=THEME["card_bg"], fg=THEME["text_primary"], font=self._font(12, min_size=11, max_size=15, weight="bold"), wraplength=280, justify="left")
         self.lbl_ssd_model.pack(anchor="w", pady=(0, 6))
 
         metrics_grid = tk.Frame(parent, bg=THEME["card_bg"])
@@ -825,7 +1087,7 @@ class App(tk.Tk):
         health_frame.pack(fill="x", pady=(2, 6))
         self.ssd_health_frame = health_frame
         tk.Label(health_frame, text="Saúde", bg=THEME["card_bg"], fg=THEME["text_secondary"], font=self._font(9, min_size=8, max_size=11)).pack(anchor="w")
-        self.lbl_ssd_health = tk.Label(health_frame, text="Indisponível", bg=THEME["card_bg"], fg=THEME["text_secondary"], font=self._font(9, min_size=8, max_size=11, weight="bold"), wraplength=180)
+        self.lbl_ssd_health = tk.Label(health_frame, text="Disco", bg=THEME["card_bg"], fg=THEME["text_secondary"], font=self._font(9, min_size=8, max_size=11, weight="bold"), wraplength=180)
         self.lbl_ssd_health.pack(anchor="w", pady=(2, 0))
 
         self.ssd_row_frames = []
@@ -850,19 +1112,144 @@ class App(tk.Tk):
             self.system_row_frames.append(row)
 
     def _build_info_page(self):
-        page = self.pages["Informações"]
-        # Use the main page canvas for vertical scrolling to avoid duplicate scrollbars
+        page = self.pages.get("Ferramentas") or self.pages.get("Hardware") or self.pages.get("Informações")
+        if page is None:
+            return
+
+        self.info_controls = tk.Frame(page, bg=THEME['bg'])
+        self.info_controls.pack(fill="x", padx=24, pady=(12, 8))
+
+        self.hardware_title_label = tk.Label(
+            self.info_controls,
+            text="Coleta detalhada de hardware para análise",
+            bg=THEME['bg'],
+            fg=THEME['text_primary'],
+            font=self._font(13, min_size=12, max_size=15, weight="bold"),
+            anchor="w",
+            justify="left",
+        )
+        self.hardware_title_label.pack(anchor="w")
+
+        self.hardware_help_label = tk.Label(
+            self.info_controls,
+            text="Use os botões abaixo para atualizar a lista ou salvar os dados em um arquivo JSON para análise posterior.",
+            bg=THEME['bg'],
+            fg=THEME['text_secondary'],
+            font=self._font(10, min_size=9, max_size=12),
+            wraplength=900,
+            justify="left",
+            anchor="w",
+        )
+        self.hardware_help_label.pack(anchor="w", pady=(4, 8))
+
+        self.hardware_actions = tk.Frame(self.info_controls, bg=THEME['bg'])
+        self.hardware_actions.pack(fill="x")
+        self.hardware_update_button = tk.Button(
+            self.hardware_actions,
+            text="Atualizar lista",
+            bg=THEME['accent_blue'],
+            fg=THEME['tooltip_fg'],
+            bd=0,
+            relief="flat",
+            padx=14,
+            pady=8,
+            cursor="hand2",
+            command=lambda: self.refresh_hardware_analysis(force=True),
+        )
+        self.hardware_update_button.pack(side="left")
+        self.hardware_save_button = tk.Button(
+            self.hardware_actions,
+            text="Salvar lista",
+            bg=THEME['accent_green'],
+            fg=THEME['tooltip_fg'],
+            bd=0,
+            relief="flat",
+            padx=14,
+            pady=8,
+            cursor="hand2",
+            command=self.save_hardware_analysis,
+        )
+        self.hardware_save_button.pack(side="left", padx=(8, 0))
+        self.hardware_status_label = tk.Label(
+            self.hardware_actions,
+            text="Aguardando coleta...",
+            bg=THEME['bg'],
+            fg=THEME['accent_blue'],
+            font=self._font(10, min_size=9, max_size=12),
+            anchor="w",
+        )
+        self.hardware_status_label.pack(side="left", padx=(12, 0))
+
+        windows_tools_frame = tk.Frame(self.info_controls, bg=THEME['bg'])
+        windows_tools_frame.pack(fill="x", pady=(12, 0))
+
+        tk.Label(
+            windows_tools_frame,
+            text="Ferramentas do Windows",
+            bg=THEME['bg'],
+            fg=THEME['text_primary'],
+            font=self._font(12, min_size=11, max_size=14, weight="bold"),
+            anchor="w",
+        ).pack(anchor="w")
+
+        tk.Label(
+            windows_tools_frame,
+            text="Abra utilitários do Windows em um clique para manutenção e suporte.",
+            bg=THEME['bg'],
+            fg=THEME['text_secondary'],
+            font=self._font(10, min_size=9, max_size=12),
+            wraplength=900,
+            justify="left",
+            anchor="w",
+        ).pack(anchor="w", pady=(4, 8))
+
+        tools_buttons_frame = tk.Frame(windows_tools_frame, bg=THEME['bg'])
+        tools_buttons_frame.pack(fill="x")
+        tool_actions = [
+            ("Limpeza de Disco", ["cleanmgr.exe"], "Limpeza de disco"),
+            ("Gerenciador de Dispositivos", ["devmgmt.msc"], "Gerenciador de Dispositivos"),
+            ("Gerenciamento de Disco", ["diskmgmt.msc"], "Gerenciamento de Disco"),
+            ("Área de Trabalho Remota", ["mstsc.exe"], "Área de Trabalho Remota"),
+            ("Gerenciador de Serviços", ["services.msc"], "Gerenciador de Serviços"),
+        ]
+
+        for index, (label, command, description) in enumerate(tool_actions):
+            button = self._create_action_button(
+                tools_buttons_frame,
+                label,
+                lambda cmd=command, desc=description: self._launch_windows_tool(cmd, desc),
+                bg=THEME['card_bg'],
+                fg=THEME['text_primary'],
+                activebg=THEME['button_hover_bg'],
+                padx=12,
+                pady=8,
+                font=self._font(10, min_size=9, max_size=12),
+            )
+            button.grid(row=index // 2, column=index % 2, sticky="w", padx=(0, 8), pady=6)
+
+        tools_buttons_frame.columnconfigure(0, weight=1)
+        tools_buttons_frame.columnconfigure(1, weight=1)
+
         self.info_content = tk.Frame(page, bg=THEME['bg'])
         self.info_content.pack(fill="both", expand=True)
+
         self.info_canvas = tk.Canvas(self.info_content, bg=THEME['bg'], highlightthickness=0)
-        # Do not create a separate scrollbar here (it duplicated the page scrollbar and confundia o usuário)
         self.info_canvas.pack(side="left", fill="both", expand=True)
+
+        self.info_scrollbar = ttk.Scrollbar(self.info_content, orient="vertical", command=self.info_canvas.yview)
+        self.info_scrollbar.pack(side="right", fill="y")
+        self.info_canvas.configure(yscrollcommand=self.info_scrollbar.set)
+
         self.info_inner = tk.Frame(self.info_canvas, bg=THEME['bg'])
-        self.info_canvas.create_window((0, 0), window=self.info_inner, anchor="nw")
-        # Atualiza a scrollregion do canvas interno e aciona a atualização do canvas principal
+        self.info_canvas_window = self.info_canvas.create_window((0, 0), window=self.info_inner, anchor="nw")
+
         def _info_inner_configure(event=None):
             try:
+                self.info_canvas.update_idletasks()
                 self.info_canvas.configure(scrollregion=self.info_canvas.bbox("all"))
+                canvas_width = max(self.info_content.winfo_width(), self.info_canvas.winfo_width(), 680)
+                self.info_canvas.itemconfigure(self.info_canvas_window, width=canvas_width)
+                self.info_canvas.configure(width=max(canvas_width, self.info_content.winfo_width()))
             except Exception:
                 pass
             try:
@@ -872,6 +1259,18 @@ class App(tk.Tk):
                 pass
 
         self.info_inner.bind("<Configure>", _info_inner_configure)
+        self.info_canvas.bind("<Configure>", _info_inner_configure)
+
+        def _refresh_info_canvas():
+            try:
+                _info_inner_configure()
+                if hasattr(self, 'after'):
+                    self.after(120, _info_inner_configure)
+            except Exception:
+                pass
+
+        self.after(80, _refresh_info_canvas)
+        self.after(220, _refresh_info_canvas)
 
     def _build_firewall_page(self):
         page = self.pages["Firewall"]
@@ -896,6 +1295,7 @@ class App(tk.Tk):
         self.firewall_port_direction.set('Entrada')
         self.firewall_port_direction.pack(side='left')
         tk.Button(port_frame, text="Liberar porta", bg=THEME["card_bg"], fg=THEME["text_primary"], bd=0, relief="flat", highlightbackground=THEME["muted"], highlightthickness=1, padx=16, pady=10, cursor="hand2", command=self.open_port).pack(side="left", padx=8)
+        tk.Button(port_frame, text="Liberar executável", bg=THEME["accent_green"], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=16, pady=10, cursor="hand2", command=self.open_program_for_firewall).pack(side="left", padx=8)
 
         # Controls for connections table
         table_controls = tk.Frame(page, bg=THEME["bg"])
@@ -921,28 +1321,27 @@ class App(tk.Tk):
         self.firewall_list_refresh_button.pack(side="right")
 
         # TreeView for firewall connections
-        cols = ("local", "remote", "protocol", "status", "pid", "process", "local_port")
+        cols = ("local_port", "local", "protocol", "status", "process")
         self.firewall_tree = ttk.Treeview(page, columns=cols, show='headings', selectmode='browse')
-        self.firewall_tree.heading('local', text='Endereço Local', command=lambda: self._treeview_sort_column(self.firewall_tree, 'local', False))
-        self.firewall_tree.heading('remote', text='Endereço Remoto', command=lambda: self._treeview_sort_column(self.firewall_tree, 'remote', False))
+        self.firewall_tree["displaycolumns"] = ("local_port", "local", "protocol", "status", "process")
+        self.firewall_tree.heading('local_port', text='Porta', command=lambda: self._treeview_sort_column(self.firewall_tree, 'local_port', True))
+        self.firewall_tree.heading('local', text='Conexão', command=lambda: self._treeview_sort_column(self.firewall_tree, 'local', False))
         self.firewall_tree.heading('protocol', text='Protocolo', command=lambda: self._treeview_sort_column(self.firewall_tree, 'protocol', False))
         self.firewall_tree.heading('status', text='Estado', command=lambda: self._treeview_sort_column(self.firewall_tree, 'status', False))
-        self.firewall_tree.heading('pid', text='PID', command=lambda: self._treeview_sort_column(self.firewall_tree, 'pid', False))
         self.firewall_tree.heading('process', text='Processo', command=lambda: self._treeview_sort_column(self.firewall_tree, 'process', False))
-        self.firewall_tree.heading('local_port', text='Porta', command=lambda: self._treeview_sort_column(self.firewall_tree, 'local_port', True))
         self.firewall_tree.column('local_port', width=80, anchor='center', stretch=False)
-        self.firewall_tree.column('local', width=180, anchor='w')
-        self.firewall_tree.column('remote', width=180, anchor='w')
+        self.firewall_tree.column('local', width=220, anchor='w')
         self.firewall_tree.column('protocol', width=90, anchor='center')
         self.firewall_tree.column('status', width=100, anchor='center')
-        self.firewall_tree.column('pid', width=80, anchor='center')
-        self.firewall_tree.column('process', width=160, anchor='w')
+        self.firewall_tree.column('process', width=280, anchor='w')
 
         tree_frame = tk.Frame(page, bg=THEME["bg"])
         tree_frame.pack(fill='both', expand=True, padx=24, pady=(0, 8))
-        tree_scroll = ttk.Scrollbar(tree_frame, style="Vertical.TScrollbar", orient='vertical', command=self.firewall_tree.yview)
-        self.firewall_tree.configure(yscrollcommand=tree_scroll.set)
-        tree_scroll.pack(side='right', fill='y')
+        tree_scroll_y = ttk.Scrollbar(tree_frame, style="Vertical.TScrollbar", orient='vertical', command=self.firewall_tree.yview)
+        tree_scroll_x = ttk.Scrollbar(tree_frame, style="Horizontal.TScrollbar", orient='horizontal', command=self.firewall_tree.xview)
+        self.firewall_tree.configure(yscrollcommand=tree_scroll_y.set, xscrollcommand=tree_scroll_x.set)
+        tree_scroll_y.pack(side='right', fill='y')
+        tree_scroll_x.pack(side='bottom', fill='x')
         self.firewall_tree.pack(fill='both', expand=True)
 
         # Action buttons
@@ -958,6 +1357,38 @@ class App(tk.Tk):
         # storage for rows
         self._firewall_rows = []
         self.refresh_firewall_list()
+
+    @staticmethod
+    def _sort_firewall_rows(rows):
+        def sort_key(item):
+            port_value = item.get('local_port', '') or item.get('localport', '')
+            try:
+                numeric_port = int(port_value)
+                has_port = True
+            except (TypeError, ValueError):
+                numeric_port = 999999
+                has_port = False
+            return (0 if has_port else 1, numeric_port, str(item.get('process', '')).lower(), str(item.get('protocol', '')).lower(), str(item.get('local_addr', '')).lower())
+        return sorted(rows, key=sort_key)
+
+    @staticmethod
+    def _build_firewall_search_text(row):
+        if row is None:
+            return ''
+        if not isinstance(row, dict):
+            row = dict(row)
+        parts = []
+        for key in ('local_port', 'localport', 'port', 'process', 'program', 'name', 'protocol', 'direction', 'action', 'profile', 'local_addr', 'remote_addr', 'remote_port', 'status'):
+            value = row.get(key)
+            if value in (None, ''):
+                continue
+            text = str(value).strip()
+            if text:
+                parts.append(text)
+        program_value = row.get('program') or row.get('process') or row.get('name') or ''
+        if isinstance(program_value, str) and program_value:
+            parts.append(os.path.basename(program_value))
+        return ' '.join(parts).lower()
 
     def _treeview_sort_column(self, tv, col, numeric=False):
         data = [(tv.set(k, col), k) for k in tv.get_children('')]
@@ -1048,7 +1479,7 @@ class App(tk.Tk):
             if hasattr(self, 'firewall_output'):
                 self.firewall_output.insert(tk.END, f'Erro exportando: {exc}\n')
 
-    def _create_action_button(self, parent, text, command, bg=THEME['accent_blue'], fg=THEME['tooltip_fg'], activebg=None, padx=16, pady=10, font=None):
+    def _create_action_button(self, parent, text, command, bg=THEME['accent_blue'], fg=THEME['tooltip_fg'], activebg=None, padx=10, pady=6, font=None):
         return tk.Button(
             parent,
             text=text,
@@ -1056,13 +1487,15 @@ class App(tk.Tk):
             fg=fg,
             activebackground=activebg or bg,
             activeforeground=fg,
-            bd=0,
-            relief="flat",
+            bd=1,
+            relief="raised",
             padx=padx,
             pady=pady,
             cursor="hand2",
-            highlightthickness=0,
-            font=font or self._font(10, min_size=9, max_size=12, weight="bold"),
+            highlightthickness=1,
+            highlightbackground=THEME['shadow_hover'],
+            highlightcolor=THEME['accent_blue'],
+            font=font or self._font(9, min_size=8, max_size=10, weight="bold"),
             command=command,
         )
 
@@ -1103,13 +1536,24 @@ class App(tk.Tk):
         self._create_page_header(page, "Central de manutenção", "Execute uma manutenção completa com checklist em tempo real, relatório automático e envio opcional por e-mail.", accent=THEME['accent_blue'])
 
         controls = tk.Frame(page, bg=THEME["bg"])
-        controls.pack(fill="x", padx=24, pady=(4, 16))
-        self.cleanup_start_button = self._create_action_button(controls, "Iniciar Manutenção", self.run_cleanup, bg=THEME['accent_blue'])
-        self.cleanup_start_button.pack(side="left")
-        self.cleanup_reports_button = self._create_action_button(controls, "Abrir Pasta de Relatórios", self._open_reports_folder, bg=THEME['accent_green'])
-        self.cleanup_reports_button.pack(side="left", padx=8)
-        self.cleanup_send_button = self._create_action_button(controls, "Enviar último relatório por e-mail", self._send_last_report, bg=THEME['accent_purple'])
+        controls.pack(fill="x", padx=24, pady=(4, 8))
+        self.cleanup_execute_button = self._create_action_button(controls, "Executar limpezas selecionadas", lambda: self.run_cleanup(include_defender=False), bg=THEME['accent_blue'])
+        self.cleanup_execute_button.pack(side="left")
+        self.cleanup_quick_button = self._create_action_button(controls, "Limpeza Rápida", lambda: self.run_cleanup(include_defender=False), bg=THEME['accent_blue'])
+        self.cleanup_quick_button.pack(side="left", padx=8)
+        self.cleanup_slow_button = self._create_action_button(controls, "Limpeza Lenta", lambda: self.run_cleanup(include_defender=True), bg=THEME['accent_orange'])
+        self.cleanup_slow_button.pack(side="left", padx=8)
+        self.cleanup_defender_button = self._create_action_button(controls, "Verificar Defender", self.run_defender_scan, bg=THEME['accent_green'])
+        self.cleanup_defender_button.pack(side="left", padx=8)
+
+        reports_controls = tk.Frame(page, bg=THEME["bg"])
+        reports_controls.pack(fill="x", padx=24, pady=(0, 12))
+        self.cleanup_reports_button = self._create_action_button(reports_controls, "Abrir pasta de relatórios", self._open_reports_folder, bg=THEME['accent_green'])
+        self.cleanup_reports_button.pack(side="left")
+        self.cleanup_send_button = self._create_action_button(reports_controls, "Enviar relatório", self._send_last_report, bg=THEME['accent_purple'])
         self.cleanup_send_button.pack(side="left", padx=8)
+
+        tk.Label(page, text="Modo rápido: somente itens marcados. Modo lento: itens marcados + Defender.", bg=THEME['bg'], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=10), anchor="w").pack(fill="x", padx=24, pady=(0, 8))
 
         summary_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=18, pady=18)
         summary_card.pack(fill="x", padx=24, pady=(0, 12))
@@ -1125,20 +1569,23 @@ class App(tk.Tk):
         options_card = tk.Frame(page, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0)
         options_card.pack(fill="x", padx=24, pady=(0, 12))
         tk.Label(options_card, text="Selecione os itens a limpar", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold"), anchor="w").pack(anchor="w", padx=16, pady=(12, 4))
-        tk.Label(options_card, text="Cada item mostra o seu progresso individual e o espaço recuperado após a limpeza.", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor="w", wraplength=980, justify="left").pack(anchor="w", padx=16, pady=(0, 10))
+        tk.Label(options_card, text="Cada item mostra o seu progresso individual e o espaço recuperado após a limpeza. Itens sensíveis ficam desmarcados por padrão para proteger arquivos e credenciais.", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor="w", wraplength=980, justify="left").pack(anchor="w", padx=16, pady=(0, 10))
         self.cleanup_options_frame = tk.Frame(options_card, bg=THEME['card_bg'])
         self.cleanup_options_frame.pack(fill="x", padx=16, pady=(0, 16))
+        self.cleanup_options_frame.grid_columnconfigure(0, weight=1)
+        self.cleanup_options_frame.grid_columnconfigure(1, weight=1)
 
         self.cleanup_action_vars = {}
         self.cleanup_option_cards = {}
         self.cleanup_option_bars = {}
         self.cleanup_option_result_labels = {}
-        for action in self.maintenance_coordinator.get_action_labels():
-            var = tk.BooleanVar(value=True)
+        for index, action in enumerate(self.maintenance_coordinator.get_action_labels()):
+            var = tk.BooleanVar(value=action.get('default_selected', True))
             self.cleanup_action_vars[action['id']] = var
             row = tk.Frame(self.cleanup_options_frame, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=14, pady=12)
-            row.pack(fill="x", pady=8)
+            row.grid(row=index // 2, column=index % 2, sticky="nsew", padx=6, pady=8)
             row.bind("<Button-1>", lambda event, var=var: var.set(not var.get()))
+            Tooltip(row, f"{action.get('description') or action.get('label') or 'Item disponível para limpeza'}\n\nBackup automático local por 30 dias na pasta ao lado do destino.")
 
             check_frame = tk.Frame(row, bg=THEME['card_bg'])
             check_frame.pack(side="left", padx=(0, 12), anchor="n")
@@ -1150,7 +1597,7 @@ class App(tk.Tk):
             label = tk.Label(content, text=action['name'], bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold"), anchor="w")
             label.pack(anchor="w")
             description = action.get('description') or action.get('label') or 'Item disponível para limpeza'
-            description_label = tk.Label(content, text=description, bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=10), anchor="w", wraplength=520, justify="left")
+            description_label = tk.Label(content, text=description, bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=10), anchor="w", wraplength=320, justify="left")
             description_label.pack(anchor="w", pady=(2, 0))
 
             bar_frame = tk.Frame(row, bg=THEME['card_bg'], width=220)
@@ -1368,18 +1815,26 @@ class App(tk.Tk):
                 "install_location": install_location
             }
             
-            # Criar card para programa com design melhorado e destaque azul sutil
+            if idx % 2 == 0:
+                column = 0
+            else:
+                column = 1
+            
+            row = idx // 2
+            
             prog_frame = tk.Frame(self.programs_checkboxes_frame, bg=THEME["card_bg"], highlightbackground=THEME["shadow_hover"], highlightthickness=1, bd=0)
-            prog_frame.pack(fill="x", pady=4, padx=2)
+            prog_frame.grid(row=row, column=column, sticky="nsew", padx=4, pady=4)
+            prog_frame.grid_propagate(False)
+            self.programs_checkboxes_frame.grid_columnconfigure(0, weight=1)
+            self.programs_checkboxes_frame.grid_columnconfigure(1, weight=1)
+            
             accent_bar = tk.Frame(prog_frame, bg=THEME['accent_blue'], width=3)
             accent_bar.pack(side="left", fill="y")
             accent_bar.pack_propagate(False)
             
-            # Frame interno com padding
             inner_frame = tk.Frame(prog_frame, bg=THEME["card_bg"])
-            inner_frame.pack(fill="x", padx=(10, 12), pady=8)
+            inner_frame.pack(fill="both", expand=True, padx=(10, 12), pady=8)
             
-            # Checkbox
             chk = tk.Checkbutton(
                 inner_frame, 
                 text="", 
@@ -1395,11 +1850,9 @@ class App(tk.Tk):
             )
             chk.pack(side="left", padx=(0, 8))
             
-            # Frame com informações do programa
             info_frame = tk.Frame(inner_frame, bg=THEME["card_bg"])
-            info_frame.pack(side="left", fill="x", expand=True)
+            info_frame.pack(side="left", fill="both", expand=True)
             
-            # Nome do programa (mais escuro, peso bold)
             name_label = tk.Label(
                 info_frame, 
                 text=name, 
@@ -1407,11 +1860,10 @@ class App(tk.Tk):
                 fg=THEME['text_primary'], 
                 font=self._font(10, min_size=9, max_size=12, weight="bold"),
                 justify="left",
-                wraplength=580
+                wraplength=260
             )
             name_label.pack(anchor="w", pady=(0, 2))
             
-            # Versão (texto menor e cinza)
             if version and version.strip():
                 version_label = tk.Label(
                     info_frame, 
@@ -1422,13 +1874,14 @@ class App(tk.Tk):
                 )
                 version_label.pack(anchor="w", pady=(0, 0))
             
-            # Dica de clique direito
             hint_label = tk.Label(
                 info_frame, 
-                text="(clique para adicionar ao relatório • clique direito para opções)", 
+                text="(clique para adicionar • clique direito para opções)", 
                 bg=THEME["card_bg"], 
                 fg="#999999", 
-                font=self._font(8, min_size=7, max_size=9)
+                font=self._font(8, min_size=7, max_size=9),
+                justify="left",
+                wraplength=260
             )
             hint_label.pack(anchor="w", pady=(2, 0))
             
@@ -1456,7 +1909,6 @@ class App(tk.Tk):
             inner_frame.bind("<Button-3>", on_right_click)
             info_frame.bind("<Button-3>", on_right_click)
             
-            # Adicionar borda sutil ao card
             border_frame = tk.Frame(prog_frame, bg=THEME["shadow_hover"], height=1)
             border_frame.pack(fill="x", side="bottom")
             border_frame.pack_propagate(False)
@@ -1585,6 +2037,94 @@ class App(tk.Tk):
             var.set(False)
         self._update_selected_programs()
 
+    def _build_email_settings_section(self, parent):
+        if not hasattr(self, 'report_auto_send'):
+            self.report_auto_send = tk.BooleanVar(value=bool(self._report_settings.get('auto_send', False)))
+        if not hasattr(self, 'report_recipient'):
+            self.report_recipient = tk.StringVar(value=self._report_settings.get('recipient_email', ''))
+        if not hasattr(self, 'report_api_key'):
+            self.report_api_key = tk.StringVar(value=self._report_settings.get('resend_api_key', ''))
+        if not hasattr(self, 'report_backup_api_key'):
+            self.report_backup_api_key = tk.StringVar(value=self._report_settings.get('backup_api_key', ''))
+        if not hasattr(self, 'report_subject_template'):
+            self.report_subject_template = tk.StringVar(value=self._report_settings.get('email_subject_template', 'Relatório de Manutenção - {computer_name} - {date}'))
+        if not hasattr(self, 'report_from_email'):
+            self.report_from_email = tk.StringVar(value=self._report_settings.get('from_email', 'onboarding@resend.dev'))
+        if not hasattr(self, 'report_api_key_visible'):
+            self.report_api_key_visible = tk.BooleanVar(value=False)
+        if not hasattr(self, 'report_backup_api_key_visible'):
+            self.report_backup_api_key_visible = tk.BooleanVar(value=False)
+        if not hasattr(self, 'report_save_pending'):
+            self.report_save_pending = tk.BooleanVar(value=bool(self._report_settings.get('save_pending_on_failure', True)))
+        if not hasattr(self, 'email_status_var'):
+            self.email_status_var = tk.StringVar(value="🔴 Não Configurada")
+        if not hasattr(self, 'internet_status_var'):
+            self.internet_status_var = tk.StringVar(value="🔴 Offline")
+        if not hasattr(self, 'last_send_var'):
+            self.last_send_var = tk.StringVar(value="Sem envios ainda")
+
+        email_card = RoundedCard(parent, "Envio de relatórios", THEME['accent_blue'], width=1060, height=640)
+        email_card.pack(padx=24, pady=(0, 16), fill="x")
+        tk.Label(email_card.inner_frame, text="Configure a API Resend, o destinatário, o remetente e o texto do e-mail diretamente aqui na aba de Configurações.", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=960, justify="left").pack(anchor="w", pady=(4, 10))
+
+        status_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        status_frame.pack(fill="x", pady=(0, 8))
+        tk.Label(status_frame, text="Status da API", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold")).pack(side="left")
+        tk.Label(status_frame, textvariable=self.email_status_var, bg=THEME['card_bg'], fg=THEME['accent_green'], font=self._font(10, min_size=9, max_size=12)).pack(side="left", padx=(8, 16))
+        tk.Label(status_frame, text="Internet", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold")).pack(side="left")
+        tk.Label(status_frame, textvariable=self.internet_status_var, bg=THEME['card_bg'], fg=THEME['accent_green'], font=self._font(10, min_size=9, max_size=12)).pack(side="left", padx=(8, 16))
+        tk.Label(status_frame, text="Último envio", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12, weight="bold")).pack(side="left")
+        tk.Label(status_frame, textvariable=self.last_send_var, bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=280, justify="left").pack(side="left", padx=(8, 0))
+
+        tk.Checkbutton(email_card.inner_frame, text="Enviar automaticamente após gerar relatório", variable=self.report_auto_send, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_blue'], activebackground=THEME['card_bg']).pack(anchor="w", pady=4)
+        tk.Checkbutton(email_card.inner_frame, text="Salvar localmente para envio posterior se falhar", variable=self.report_save_pending, bg=THEME['card_bg'], fg=THEME['text_primary'], selectcolor=THEME['accent_blue'], activebackground=THEME['card_bg']).pack(anchor="w", pady=4)
+
+        action_bar = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        action_bar.pack(fill="x", pady=(8, 10))
+        self._create_action_button(action_bar, "💾 Salvar configuração", self._save_report_settings, bg=THEME['accent_green']).pack(side="left")
+        self._create_action_button(action_bar, "🧪 Testar envio", self._test_report_delivery, bg=THEME['accent_orange']).pack(side="left", padx=(8, 0))
+        self._create_action_button(action_bar, "📬 Enviar pendentes", self._send_pending_reports, bg=THEME['accent_purple']).pack(side="left", padx=(8, 0))
+
+        tk.Label(email_card.inner_frame, text="Email destinatário", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self._create_input_field(email_card.inner_frame, self.report_recipient).pack(fill="x", pady=2)
+
+        tk.Label(email_card.inner_frame, text="Assunto do e-mail", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self._create_input_field(email_card.inner_frame, self.report_subject_template).pack(fill="x", pady=2)
+
+        tk.Label(email_card.inner_frame, text="Texto do e-mail", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self.report_body_template_text = tk.Text(email_card.inner_frame, height=8, bg=THEME['card_bg'], fg=THEME['text_primary'], bd=1, relief="solid", highlightthickness=1, highlightbackground=THEME['shadow_hover'], highlightcolor=THEME['accent_blue'])
+        self.report_body_template_text.pack(fill="x", pady=2)
+        self.report_body_template_text.insert("1.0", self._report_settings.get('email_body_template', ''))
+
+        tk.Label(email_card.inner_frame, text="API Key Resend (principal)", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        api_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        api_frame.pack(fill="x", pady=2)
+        self.report_api_key_entry = self._create_input_field(api_frame, self.report_api_key, show='*')
+        self.report_api_key_entry.pack(side="left", fill="x", expand=True)
+        self._create_action_button(api_frame, "Mostrar", self._toggle_report_api_visibility, bg=THEME['accent_blue'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+        self._create_action_button(api_frame, "Colar", self._paste_report_api_key, bg=THEME['muted'], fg=THEME['text_primary'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+
+        tk.Label(email_card.inner_frame, text="API Key Reserva", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        backup_frame = tk.Frame(email_card.inner_frame, bg=THEME['card_bg'])
+        backup_frame.pack(fill="x", pady=2)
+        self.report_backup_api_key_entry = self._create_input_field(backup_frame, self.report_backup_api_key, show='*')
+        self.report_backup_api_key_entry.pack(side="left", fill="x", expand=True)
+        self._create_action_button(backup_frame, "Mostrar", self._toggle_report_backup_api_visibility, bg=THEME['accent_blue'], padx=10, pady=8).pack(side="left", padx=(8, 0))
+
+        tk.Label(email_card.inner_frame, text="Email remetente", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(10, min_size=9, max_size=12)).pack(anchor="w", pady=(6, 2))
+        self._create_input_field(email_card.inner_frame, self.report_from_email).pack(fill="x", pady=2)
+
+        history_frame = tk.Frame(parent, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0)
+        history_frame.pack(fill="x", padx=24, pady=(0, 24))
+        tk.Label(history_frame, text="Histórico recente", bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13, weight="bold")).pack(anchor="w", padx=16, pady=(12, 6))
+        self.email_history_text = tk.Text(history_frame, height=8, bg=THEME['card_bg'], bd=0, relief="flat", font=self._font(10, min_size=9, max_size=12), fg=THEME['text_primary'])
+        self.email_history_text.pack(fill="x", padx=16, pady=(0, 12))
+        self._refresh_email_status_widgets()
+
+    def _toggle_theme(self):
+        new_mode = "dark" if self.theme_mode != "dark" else "light"
+        self._apply_theme(new_mode)
+
     def _build_settings_page(self):
         page = self.pages["Configurações"]
         header = tk.Label(page, text="Configurações", bg=THEME["bg"], fg=THEME['text_primary'], font=self._font(16, min_size=14, max_size=20, weight="bold"), wraplength=720, justify="left")
@@ -1592,21 +2132,16 @@ class App(tk.Tk):
         sub = tk.Label(page, text="Ajustes e informações do aplicativo.", bg=THEME["bg"], fg=THEME['text_secondary'], font=self._font(11, min_size=10, max_size=13), wraplength=720, justify="left")
         sub.pack(anchor="nw", padx=24)
 
-        settings_card = RoundedCard(page, "Informações do aplicativo", "#2563EB", width=1060, height=160)
+        settings_card = RoundedCard(page, "Informações do aplicativo", "#2563EB", width=1060, height=180)
         settings_card.pack(padx=24, pady=16, fill="x")
+        self.theme_status_label = tk.Label(settings_card.inner_frame, text=f"Tema: {'Escuro' if self.theme_mode == 'dark' else 'Claro'}", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13))
+        self.theme_status_label.pack(anchor="w", pady=4)
+        tk.Label(settings_card.inner_frame, text="Use o botão de tema fixo no menu lateral para alternar rapidamente.", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=900, justify="left").pack(anchor="w", pady=(2, 6))
         tk.Label(settings_card.inner_frame, text="Versão: 1.0", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=4)
-        tk.Label(settings_card.inner_frame, text="Tema: Claro", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=4)
         tk.Label(settings_card.inner_frame, text="Estilo: Dashboard moderno", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(11, min_size=10, max_size=13)).pack(anchor="w", pady=4)
         tk.Button(settings_card.inner_frame, text="Configurar atualização automática", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=12, pady=8, cursor="hand2", command=self._open_settings_dialog).pack(anchor="e", pady=(8, 0))
 
-        reports_card = RoundedCard(page, "Relatórios", "#0F766E", width=1060, height=220)
-        reports_card.pack(padx=24, pady=(0, 16), fill="x")
-        tk.Label(reports_card.inner_frame, text="Configuração de envio de e-mail", bg=THEME["card_bg"], fg=THEME['text_primary'], font=self._font(12, min_size=10, max_size=14, weight="bold")).pack(anchor="w", pady=(8, 4))
-        tk.Label(reports_card.inner_frame, text="Ajuste API principal e reserva, destinatário, remetente, assunto, corpo do e-mail e o comportamento de reenvio quando houver falha.", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=980, justify="left").pack(anchor="w", pady=(0, 10))
-        action_row = tk.Frame(reports_card.inner_frame, bg=THEME['card_bg'])
-        action_row.pack(fill="x", pady=(4, 0))
-        tk.Button(action_row, text="Configurar e-mail", bg=THEME['accent_blue'], fg=THEME["tooltip_fg"], bd=0, relief="flat", padx=14, pady=9, cursor="hand2", command=lambda: self.show_page("Email")).pack(side="left")
-        tk.Label(action_row, text="A página de e-mail abre diretamente aqui para edição rápida.", bg=THEME["card_bg"], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), wraplength=620, justify="left").pack(side="left", padx=(12, 0))
+        self._build_email_settings_section(page)
 
     def _build_email_settings_page(self):
         page = self.pages["Email"]
@@ -1839,7 +2374,10 @@ class App(tk.Tk):
 
     def _set_cleanup_buttons_state(self, enabled: bool):
         for widget_name in [
-            'cleanup_start_button',
+            'cleanup_execute_button',
+            'cleanup_quick_button',
+            'cleanup_slow_button',
+            'cleanup_defender_button',
             'cleanup_reports_button',
             'cleanup_send_button',
         ]:
@@ -1870,6 +2408,17 @@ class App(tk.Tk):
             self._append_cleanup_log("Chave de API colada da área de transferência.")
         except tk.TclError:
             self._append_cleanup_log("Não há texto na área de transferência.")
+
+    def _launch_windows_tool(self, command, description):
+        if isinstance(command, str):
+            command = [command]
+        try:
+            subprocess.Popen(command, shell=False)
+            self._append_cleanup_log(f"✅ {description} aberto.")
+            return True
+        except Exception as exc:
+            self._append_cleanup_log(f"❌ Não foi possível abrir {description}: {exc}")
+            return False
 
     def _open_reports_folder(self):
         folder = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Relatorio_Limpeza'))
@@ -2214,10 +2763,18 @@ class App(tk.Tk):
                 page.pack_forget()
         self._set_nav_button_active()
         if page_name == "Dashboard":
-            self._render_dashboard(self.data)
-        elif page_name == "Informações":
-            self._render_info_page(self.data)
-        self.after(50, self._on_page_inner_configure)
+            if self._dashboard_needs_refresh:
+                self._render_dashboard(self.data)
+                self._dashboard_needs_refresh = False
+            else:
+                self._handle_window_resize()
+        elif page_name in {"Hardware", "Informações", "Ferramentas"}:
+            if self._info_needs_refresh:
+                self._render_info_page(self.data)
+                self._info_needs_refresh = False
+            else:
+                self._handle_window_resize()
+        self.after(20, self._on_page_inner_configure)
 
     def _collect_hardware_payload(self, force: bool = False):
         """Coleta os dados com fallback para a rota direta de hardware, restaurando o fluxo que preenche o dashboard."""
@@ -2623,13 +3180,9 @@ class App(tk.Tk):
                     state["bar"].set_value(0.0)
 
     def _clear_info_page(self):
-        if hasattr(self, "info_section_states"):
-            for state in self.info_section_states.values():
-                for row_label, row_value in state.get("row_widgets", []):
-                    if row_label.winfo_exists():
-                        row_label.config(text="")
-                    if row_value.winfo_exists():
-                        row_value.config(text="")
+        if hasattr(self, "info_inner") and getattr(self.info_inner, "winfo_exists", lambda: False)():
+            for child in list(self.info_inner.winfo_children()):
+                child.destroy()
 
     def _render_dashboard(self, data):
         cpu = data.get("cpu", {}) or {}
@@ -2714,7 +3267,6 @@ class App(tk.Tk):
                 metric = self.quick_metrics[key]
                 metric["value"].config(text=value_text)
                 metric["bar"].set_value(fill_value)
-                metric["icon"].config(fg=color)
 
     def _update_cpu_card(self, cpu):
         self.lbl_cpu_name.config(text=self._display_value(cpu.get("name", "Não disponível")))
@@ -2773,13 +3325,18 @@ class App(tk.Tk):
         self._update_rows_by_frames(self.ram_row_frames, ram_rows)
 
     def _update_ssd_card(self, disk):
-        model = disk.get("model") or disk.get("name") or "Disco"
+        model = disk.get("model") or disk.get("name")
         manu = disk.get("manufacturer")
-        if not self._is_unavailable_value(manu):
-            label = f"{model} — {manu}"
+        if model and not self._is_unavailable_value(model):
+            if manu and not self._is_unavailable_value(manu):
+                label = f"{model} — {manu}"
+            else:
+                label = model
+        elif manu and not self._is_unavailable_value(manu):
+            label = manu
         else:
-            label = model
-        self.lbl_ssd_model.config(text=self._display_value(label))
+            label = "SSD"
+        self.lbl_ssd_model.config(text=label)
         
         usage_value = self._extract_disk_percent(disk)
         if usage_value > 0 or not self._is_unavailable_value(disk.get("used")):
@@ -3012,11 +3569,11 @@ class App(tk.Tk):
 
         metrics = [
             ("🌡", f"{cpu_temp_value:.0f}°C" if cpu_temp_value is not None else "N/A", "Temperatura CPU", self._temp_color(cpu_temp_value if cpu_temp_value is not None else 0.0), cpu_temp_value if cpu_temp_value is not None else 0.0),
-            ("⚙", f"{cpu_usage_value:.0f}%", "Uso CPU", self._status_color(cpu_usage_value, [50, 75, 90]), cpu_usage_value),
+            ("💻", f"{cpu_usage_value:.0f}%", "Uso CPU", self._status_color(cpu_usage_value, [50, 75, 90]), cpu_usage_value),
             ("🧠", f"{ram_usage_value:.0f}%", "Uso RAM", self._status_color(ram_usage_value, [60, 80, 90]), ram_usage_value),
-            ("💾", f"{disk_temp_value:.0f}°C" if disk_temp_value is not None else "N/A", "Temperatura SSD", self._temp_color(disk_temp_value if disk_temp_value is not None else 0.0), disk_temp_value if disk_temp_value is not None else 0.0),
-            ("❤️", f"{disk_health_value:.0f}%", "Saúde SSD", self._status_color(disk_health_value, [95, 80, 60]), disk_health_value),
-            ("📁", f"{disk_usage_value:.0f}%", "Uso SSD", self._status_color(disk_usage_value, [70, 85, 95]), disk_usage_value),
+            ("🔥", f"{disk_temp_value:.0f}°C" if disk_temp_value is not None else "N/A", "Temperatura SSD", self._temp_color(disk_temp_value if disk_temp_value is not None else 0.0), disk_temp_value if disk_temp_value is not None else 0.0),
+            ("🛡️", f"{disk_health_value:.0f}%", "Saúde SSD", self._status_color(disk_health_value, [95, 80, 60]), disk_health_value),
+            ("💾", f"{disk_usage_value:.0f}%", "Uso SSD", self._status_color(disk_usage_value, [70, 85, 95]), disk_usage_value),
         ]
 
         if not self._quick_status_ready:
@@ -3117,11 +3674,28 @@ class App(tk.Tk):
     def _status_color(self, value, thresholds):
         if value is None:
             return "#6B7280"
-        if value >= thresholds[0]:
+        if len(thresholds) == 3 and thresholds[0] <= thresholds[1] <= thresholds[2]:
+            if value < thresholds[0]:
+                return "#16a34a"
+            if value < thresholds[1]:
+                return "#f59e0b"
+            if value < thresholds[2]:
+                return "#f97316"
+            return "#dc2626"
+        if len(thresholds) == 3 and thresholds[0] >= thresholds[1] >= thresholds[2]:
+            if value >= thresholds[0]:
+                return "#16a34a"
+            if value >= thresholds[1]:
+                return "#f59e0b"
+            if value >= thresholds[2]:
+                return "#f97316"
+            return "#dc2626"
+        # fallback for unexpected threshold order
+        if value < thresholds[0]:
             return "#16a34a"
-        if value >= thresholds[1]:
+        if value < thresholds[1]:
             return "#f59e0b"
-        if value >= thresholds[2]:
+        if value < thresholds[2]:
             return "#f97316"
         return "#dc2626"
 
@@ -3147,60 +3721,237 @@ class App(tk.Tk):
             return "Atenção"
         return "Crítica"
 
+    @staticmethod
+    def _format_hardware_detail_value(value):
+        if value is None:
+            return "Não disponível"
+        if isinstance(value, (list, tuple)):
+            items = [str(item).strip() for item in value if str(item).strip()]
+            return ", ".join(items) if items else "Não disponível"
+        if isinstance(value, dict):
+            return ", ".join(f"{k}: {v}" for k, v in value.items() if str(v).strip()) or "Não disponível"
+        text = str(value).strip()
+        return text if text else "Não disponível"
+
+    def _render_hardware_component_card(self, parent, title, accent, details, wraplength=320):
+        card = tk.Frame(parent, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=16, pady=16)
+        card.pack(fill='x', pady=(0, 10))
+        tk.Label(card, text=title, bg=THEME['card_bg'], fg=accent, font=self._font(12, min_size=11, max_size=14, weight='bold'), anchor='w').pack(anchor='w')
+        content = tk.Frame(card, bg=THEME['card_bg'])
+        content.pack(fill='x', pady=(8, 0))
+        for label, value in details:
+            row = tk.Frame(content, bg=THEME['card_bg'])
+            row.pack(fill='x', pady=4)
+            tk.Label(row, text=str(label), bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(9, min_size=8, max_size=10), wraplength=170, justify='left').pack(side='left')
+            tk.Label(row, text=self._format_hardware_detail_value(value), bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(9, min_size=8, max_size=10, weight='bold'), wraplength=wraplength, justify='left', anchor='w').pack(side='left', padx=(10, 0))
+        return card
+
     def _render_info_page(self, data):
         self._clear_info_page()
-        sections = [
-            ("CPU", [
-                ("Nome completo", data.get("cpu", {}).get("name", "Não disponível")),
-                ("Fabricante", data.get("cpu", {}).get("manufacturer", "Não disponível")),
-                ("Clock atual", data.get("cpu", {}).get("clock_current", "Não disponível")),
-                ("Temperatura", data.get("cpu", {}).get("temperature", "Não disponível")),
-                ("Uso", data.get("cpu", {}).get("usage", "Não disponível")),
-            ]),
-            ("RAM", [
-                ("Total", data.get("memory", {}).get("total", "Não disponível")),
-                ("Em uso", data.get("memory", {}).get("used", "Não disponível")),
-                ("Livre", data.get("memory", {}).get("free", "Não disponível")),
-                ("Percentual", data.get("memory", {}).get("percent", "Não disponível")),
-                ("Velocidade", data.get("memory", {}).get("speed", "Não disponível")),
-            ]),
-            ("SSD", [
-                ("Modelo", (data.get("disks", []) or [{}])[0].get("model", "Não disponível")),
-                ("Capacidade", (data.get("disks", []) or [{}])[0].get("total", "Não disponível")),
-                ("Uso", (data.get("disks", []) or [{}])[0].get("used", "Não disponível")),
-                ("Livre", (data.get("disks", []) or [{}])[0].get("free", "Não disponível")),
-                ("Temperatura", (data.get("disks", []) or [{}])[0].get("temperature", "Não disponível")),
-                ("Saúde SMART", (data.get("disks", []) or [{}])[0].get("smart_health", "Não disponível")),
-            ]),
-            ("GPU", [
-                ("Nome", data.get("gpu", {}).get("name", "Não disponível")),
-                ("Uso", data.get("gpu", {}).get("usage", "Não disponível")),
-                ("Temperatura", data.get("gpu", {}).get("temperature", "Não disponível")),
-            ]),
-            ("Sistema", [
-                ("OS", data.get("system", {}).get("os_name", "Não disponível")),
-                ("Versão", data.get("system", {}).get("version", "Não disponível")),
-                ("Build", data.get("system", {}).get("build", "Não disponível")),
-                ("Arquitetura", data.get("system", {}).get("architecture", "Não disponível")),
-                ("Tempo ligado", data.get("system", {}).get("uptime", "Não disponível")),
-            ]),
-            ("Placa-mãe", [
-                ("Fabricante", data.get("motherboard", {}).get("manufacturer", "Não disponível")),
-                ("Modelo", data.get("motherboard", {}).get("model", "Não disponível")),
-                ("BIOS", data.get("motherboard", {}).get("bios", "Não disponível")),
-                ("Versão", data.get("motherboard", {}).get("version", "Não disponível")),
-                ("Data", data.get("motherboard", {}).get("date", "Não disponível")),
-            ]),
-        ]
 
-        for title, rows in sections:
-            section = AccordionSection(self.info_inner, title)
-            section.pack(fill="x", pady=8)
-            for label, value in rows:
-                row = tk.Frame(section.body, bg=THEME["card_bg"])
-                row.pack(fill="x", pady=6)
-                tk.Label(row, text=f"{label}", bg=THEME["card_bg"], fg=THEME["text_secondary"], font=self._font(10, min_size=9, max_size=12), wraplength=140, justify="left").pack(side="left")
-                tk.Label(row, text=str(value), bg=THEME["card_bg"], fg=THEME["text_primary"], font=self._font(10, min_size=9, max_size=12, weight="bold"), wraplength=260, justify="right").pack(side="right")
+        cpu = data.get("cpu", {}) or {}
+        memory = data.get("memory", {}) or {}
+        disks = data.get("disks", []) or []
+        gpu = data.get("gpu", {}) or {}
+        motherboard = data.get("motherboard", {}) or {}
+        system = data.get("system", {}) or {}
+        sensors = data.get("sensors", []) or []
+
+        header_card = tk.Frame(self.info_inner, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=18, pady=16)
+        header_card.pack(fill='x', pady=(0, 12))
+        tk.Label(header_card, text='Hardware detectado', bg=THEME['card_bg'], fg=THEME['accent_blue'], font=self._font(14, min_size=12, max_size=16, weight='bold'), anchor='w').pack(anchor='w')
+        tk.Label(header_card, text='Cada peça aparece separadamente com todas as informações disponíveis.', bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor='w', wraplength=900, justify='left').pack(anchor='w', pady=(4, 0))
+
+        if not any([cpu, memory, gpu, motherboard, system, disks, sensors]):
+            empty_card = tk.Frame(self.info_inner, bg=THEME['card_bg'], highlightbackground=THEME['shadow_hover'], highlightthickness=1, bd=0, padx=18, pady=16)
+            empty_card.pack(fill='x', pady=(0, 10))
+            tk.Label(empty_card, text='Nenhum dado de hardware retornado ainda', bg=THEME['card_bg'], fg=THEME['accent_orange'], font=self._font(11, min_size=10, max_size=13, weight='bold'), anchor='w').pack(anchor='w')
+            tk.Label(empty_card, text='Use o botão Atualizar para coletar novamente.', bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(10, min_size=9, max_size=12), anchor='w', wraplength=900, justify='left').pack(anchor='w', pady=(4, 0))
+            return
+
+        self._render_hardware_component_card(
+            self.info_inner,
+            "Placa-mãe",
+            THEME['accent_purple'],
+            [
+                ("Fabricante", motherboard.get("manufacturer", "Não disponível")),
+                ("Modelo", motherboard.get("model", "Não disponível")),
+                ("BIOS", motherboard.get("bios", "Não disponível")),
+                ("Versão", motherboard.get("version", "Não disponível")),
+                ("Data", motherboard.get("date", "Não disponível")),
+            ],
+        )
+
+        self._render_hardware_component_card(
+            self.info_inner,
+            "Processador",
+            THEME['accent_blue'],
+            [
+                ("Nome", cpu.get("name", "Não disponível")),
+                ("Fabricante", cpu.get("manufacturer", "Não disponível")),
+                ("Arquitetura", cpu.get("architecture", "Não disponível")),
+                ("Cores físicos", cpu.get("physical_cores", "Não disponível")),
+                ("Threads", cpu.get("threads", "Não disponível")),
+                ("Clock atual", cpu.get("clock_current", "Não disponível")),
+                ("Clock máximo", cpu.get("clock_max", "Não disponível")),
+                ("Uso", cpu.get("usage", "Não disponível")),
+                ("Temperatura", cpu.get("temperature", "Não disponível")),
+                ("Uso por núcleo", cpu.get("usage_per_core", [])),
+                ("Temperatura por núcleo", cpu.get("temperature_per_core", [])),
+                ("Potência", cpu.get("power", "Não disponível")),
+            ],
+        )
+
+        self._render_hardware_component_card(
+            self.info_inner,
+            "Memória RAM",
+            THEME['accent_green'],
+            [
+                ("Total", memory.get("total", "Não disponível")),
+                ("Em uso", memory.get("used", "Não disponível")),
+                ("Livre", memory.get("free", "Não disponível")),
+                ("Disponível", memory.get("available", "Não disponível")),
+                ("Percentual", memory.get("percent", "Não disponível")),
+                ("Velocidade", memory.get("speed", "Não disponível")),
+                ("Tipo", memory.get("type", "Não disponível")),
+                ("Fabricante", memory.get("manufacturer", "Não disponível")),
+                ("Módulos", memory.get("modules", "Não disponível")),
+            ],
+        )
+
+        self._render_hardware_component_card(
+            self.info_inner,
+            "GPU",
+            THEME['accent_orange'],
+            [
+                ("Nome", gpu.get("name", "Não disponível")),
+                ("Fabricante", gpu.get("manufacturer", "Não disponível")),
+                ("Uso", gpu.get("usage", "Não disponível")),
+                ("Temperatura", gpu.get("temperature", "Não disponível")),
+                ("Clock", gpu.get("clock", "Não disponível")),
+                ("Memória dedicada", gpu.get("dedicated_memory", "Não disponível")),
+                ("Memória usada", gpu.get("used_memory", "Não disponível")),
+            ],
+        )
+
+        storage_card = self._render_hardware_component_card(
+            self.info_inner,
+            "Armazenamento",
+            "#0f766e",
+            [
+                ("Discos detectados", len(disks)),
+            ],
+        )
+        if disks:
+            for index, disk in enumerate(disks, start=1):
+                tk.Label(storage_card, text=f"{index}. {disk.get('name', 'Disco')}", bg=THEME['card_bg'], fg=THEME['accent_blue'], font=self._font(9, min_size=8, max_size=10, weight='bold'), anchor='w').pack(anchor='w', pady=(8, 2))
+                details = [
+                    ("Modelo", disk.get('model', 'Não disponível')),
+                    ("Fabricante", disk.get('manufacturer', 'Não disponível')),
+                    ("Tipo", disk.get('type', 'Não disponível')),
+                    ("Interface", disk.get('interface', 'Não disponível')),
+                    ("Firmware", disk.get('firmware', 'Não disponível')),
+                    ("Total", disk.get('total', 'Não disponível')),
+                    ("Usado", disk.get('used', 'Não disponível')),
+                    ("Livre", disk.get('free', 'Não disponível')),
+                    ("Sistema de arquivos", disk.get('filesystem', 'Não disponível')),
+                    ("Temperatura", disk.get('temperature', 'Não disponível')),
+                    ("Saúde SMART", disk.get('smart_health', 'Não disponível')),
+                    ("Vida restante", disk.get('remaining_life', 'Não disponível')),
+                    ("Horas ligado", disk.get('power_on_hours', 'Não disponível')),
+                    ("Inicializações", disk.get('startup_count', 'Não disponível')),
+                ]
+                for label, value in details:
+                    row = tk.Frame(storage_card, bg=THEME['card_bg'])
+                    row.pack(fill='x', pady=3)
+                    tk.Label(row, text=str(label), bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(8, min_size=7, max_size=9), wraplength=150, justify='left').pack(side='left')
+                    tk.Label(row, text=self._format_hardware_detail_value(value), bg=THEME['card_bg'], fg=THEME['text_primary'], font=self._font(8, min_size=7, max_size=9, weight='bold'), wraplength=320, justify='left', anchor='w').pack(side='left', padx=(8, 0))
+
+        self._render_hardware_component_card(
+            self.info_inner,
+            "Sistema",
+            "#16a34a",
+            [
+                ("Nome do computador", system.get("computer_name", "Não disponível")),
+                ("SO", system.get("os_name", "Não disponível")),
+                ("Versão", system.get("version", "Não disponível")),
+                ("Build", system.get("build", "Não disponível")),
+                ("Arquitetura", system.get("architecture", "Não disponível")),
+                ("Tempo ligado", system.get("uptime", "Não disponível")),
+                ("Rede", system.get("network_name", "Não disponível")),
+                ("Endereço IP", system.get("network_address", "Não disponível")),
+                ("Atualizações", system.get("update_status", "Não disponível")),
+            ],
+        )
+
+        if sensors:
+            sensors_card = self._render_hardware_component_card(self.info_inner, "Sensores detectados", THEME['accent_green'], [("Total", len(sensors))])
+            for index, sensor in enumerate(sensors, start=1):
+                row = tk.Frame(sensors_card, bg=THEME['card_bg'])
+                row.pack(fill='x', pady=4)
+                tk.Label(row, text=f"{index}. {sensor.get('sensor', 'Sensor')}", bg=THEME['card_bg'], fg=THEME['accent_green'], font=self._font(8, min_size=7, max_size=9, weight='bold'), wraplength=280, justify='left').pack(anchor='w')
+                tk.Label(row, text=f"Tipo: {self._format_hardware_detail_value(sensor.get('sensor_type', 'Não disponível'))} • Valor: {self._format_hardware_detail_value(sensor.get('value', 'Não disponível'))}", bg=THEME['card_bg'], fg=THEME['text_secondary'], font=self._font(8, min_size=7, max_size=9), wraplength=560, justify='left').pack(anchor='w', pady=(2, 0))
+
+        try:
+            self.info_inner.update_idletasks()
+            self.info_canvas.configure(scrollregion=self.info_canvas.bbox("all"))
+            self.info_canvas.yview_moveto(0)
+            self.after(80, lambda: self.info_canvas.configure(scrollregion=self.info_canvas.bbox("all")))
+        except Exception:
+            pass
+
+    def refresh_hardware_analysis(self, force: bool = False):
+        self._set_status_message("🔄 Coletando dados de hardware...")
+        if hasattr(self, "hardware_status_label") and self.hardware_status_label.winfo_exists():
+            self.hardware_status_label.config(text="Coletando dados de hardware...")
+
+        def worker():
+            try:
+                data = self._collect_hardware_payload(force=force)
+                self._schedule_ui_update(lambda: self._display_hardware_analysis(data))
+            except Exception as exc:
+                self._schedule_ui_update(lambda: self._display_hardware_analysis_error(exc))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _display_hardware_analysis(self, data):
+        self.data = data
+        self._render_info_page(data)
+        if hasattr(self, "hardware_status_label") and self.hardware_status_label.winfo_exists():
+            timestamp = data.get("collected_at") or datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.hardware_status_label.config(text=f"Última coleta: {timestamp}")
+        self._set_status_message("✔ Lista de hardware atualizada")
+        if hasattr(self, "update_label") and self.update_label.winfo_exists():
+            self.update_label.config(text=f"Última atualização: {data.get('collected_at', 'agora')}")
+
+    def _display_hardware_analysis_error(self, exc):
+        if hasattr(self, "hardware_status_label") and self.hardware_status_label.winfo_exists():
+            self.hardware_status_label.config(text="Falha ao coletar dados de hardware")
+        self._set_status_message("❌ Falha ao coletar dados de hardware")
+        if hasattr(self, "update_label") and self.update_label.winfo_exists():
+            self.update_label.config(text="Última atualização: erro")
+
+    def save_hardware_analysis(self, output_dir: str | None = None):
+        payload = self.data or self._collect_hardware_payload(force=False)
+        if not payload:
+            payload = self._collect_hardware_payload(force=True)
+
+        target_dir = output_dir or os.path.join(os.path.dirname(__file__), "hardware_reports")
+        os.makedirs(target_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = os.path.join(target_dir, f"hardware_analysis_{timestamp}.json")
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+
+        if hasattr(self, "hardware_status_label") and self.hardware_status_label.winfo_exists():
+            self.hardware_status_label.config(text=f"Arquivo salvo: {output_path}")
+        self._set_status_message("✔ Lista de hardware salva para análise")
+        if self.winfo_exists():
+            try:
+                messagebox.showinfo("Hardware", f"Dados salvos em:\n{output_path}")
+            except Exception:
+                pass
+        return output_path
 
     def check_firewall_state(self):
         try:
@@ -3240,6 +3991,25 @@ class App(tk.Tk):
         except Exception as exc:
             self.firewall_output.insert(tk.END, f"Erro: {exc}\n")
 
+    def open_program_for_firewall(self):
+        try:
+            path = filedialog.askopenfilename(
+                title="Selecionar executável para liberar",
+                filetypes=[("Executáveis", "*.exe"), ("Todos os arquivos", "*.*")],
+            )
+            if not path:
+                return
+            direction = self.firewall_port_direction.get() if hasattr(self, 'firewall_port_direction') else 'Entrada'
+            manager = FirewallManager()
+            manager.allow_program(path, direction=direction)
+            self.firewall_output.insert(tk.END, f"✔ Executável liberado para uso de porta dinâmica: {path}\n")
+            if hasattr(self, 'firewall_search') and self.firewall_search.winfo_exists():
+                self.firewall_search.delete(0, tk.END)
+                self.firewall_search.insert(0, os.path.basename(path))
+            self.refresh_firewall_list()
+        except Exception as exc:
+            self.firewall_output.insert(tk.END, f"Erro: {exc}\n")
+
     def _reset_firewall_filters(self):
         search_widget = self.__dict__.get('firewall_search')
         if search_widget is not None and getattr(search_widget, 'winfo_exists', lambda: False)():
@@ -3261,8 +4031,26 @@ class App(tk.Tk):
         def worker():
             try:
                 manager = FirewallManager()
-                rows = manager.list_connections()
-                self._schedule_ui_update(lambda: self._populate_firewall_table(rows))
+                connections = manager.list_connections() or []
+                rules = manager.list_rules() or []
+                display_rows = []
+                for row in connections:
+                    row_copy = dict(row)
+                    row_copy['kind'] = 'connection'
+                    display_rows.append(row_copy)
+                for rule in rules:
+                    rule_copy = dict(rule)
+                    rule_copy['kind'] = 'rule'
+                    if not rule_copy.get('local_port') and not rule_copy.get('localport'):
+                        rule_copy['local_port'] = 'dinâmica' if rule_copy.get('program') else ''
+                    if not rule_copy.get('process'):
+                        rule_copy['process'] = rule_copy.get('program') or rule_copy.get('name') or ''
+                    if not rule_copy.get('protocol'):
+                        rule_copy['protocol'] = 'ANY'
+                    if not rule_copy.get('status'):
+                        rule_copy['status'] = 'Regra' if rule_copy.get('enabled') is None else rule_copy.get('enabled')
+                    display_rows.append(rule_copy)
+                self._schedule_ui_update(lambda: self._populate_firewall_table(display_rows))
             except Exception as exc:
                 error_message = str(exc)
                 self._schedule_ui_update(lambda error_message=error_message: self.firewall_output.insert(tk.END, f'Erro: {error_message}\n'))
@@ -3277,21 +4065,30 @@ class App(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def _populate_firewall_table(self, rows):
-        # rows: list of dict from list_connections()
-        self._firewall_rows = rows
+        # rows: list of dict from list_connections() and list_rules()
+        self._firewall_rows = self._sort_firewall_rows(rows)
+        self._firewall_row_map = {}
         for i in self.firewall_tree.get_children():
             self.firewall_tree.delete(i)
         # rebuild items and keep master list of iids so detached rows can be reattached later
         self._firewall_iids = []
-        for idx, r in enumerate(rows):
-            local = f"{r.get('local_addr','')}:{r.get('local_port','')}"
+        for idx, r in enumerate(self._firewall_rows):
+            display_port = r.get('local_port', '') or r.get('localport', '') or ''
+            local = f"{r.get('local_addr','')}:{display_port}" if display_port else r.get('local_addr', '')
+            if not local and r.get('program'):
+                local = os.path.basename(r.get('program'))
             remote = f"{r.get('remote_addr','')}:{r.get('remote_port','')}" if r.get('remote_addr') else ''
             proto = r.get('protocol','')
             status = r.get('status','')
-            pid = r.get('pid', 0)
-            proc = r.get('process','')
+            proc = r.get('process','') or r.get('program','') or r.get('name','')
+            if not proc and r.get('program'):
+                proc = os.path.basename(r.get('program'))
+            detail = proc
+            if remote:
+                detail = f"{proc} • {remote}" if proc else remote
             item_id = f"conn_{idx}"
-            self.firewall_tree.insert('', 'end', iid=item_id, values=(local, remote, proto, status, pid, proc, r.get('local_port', 0)))
+            self.firewall_tree.insert('', 'end', iid=item_id, values=(display_port, local, proto, status, detail))
+            self._firewall_row_map[item_id] = r
             self._firewall_iids.append(item_id)
         self._apply_firewall_filter()
 
@@ -3316,21 +4113,24 @@ class App(tk.Tk):
         all_iids = getattr(self, '_firewall_iids', list(self.firewall_tree.get_children('')))
         for iid in all_iids:
             vals = self.firewall_tree.item(iid, 'values')
+            row = self._firewall_row_map.get(iid, {})
+            search_text = self._build_firewall_search_text(row)
             matches_term = True
             if term:
                 if filter_field == 'Porta':
-                    matches_term = term in str(vals[0]).lower() or term in str(vals[1]).lower() or term in str(vals[6]).lower()
+                    matches_term = term in str(vals[0]).lower() or term in search_text
                 elif filter_field == 'PID':
                     matches_term = term in str(vals[4]).lower()
                 elif filter_field == 'Processo':
-                    matches_term = term in str(vals[5]).lower()
+                    matches_term = term in str(vals[4]).lower() or term in search_text
                 elif filter_field == 'Protocolo':
-                    matches_term = term in str(vals[2]).lower()
+                    matches_term = term in str(vals[2]).lower() or term in search_text
                 elif filter_field == 'Endereço':
-                    matches_term = term in str(vals[0]).lower() or term in str(vals[1]).lower()
+                    matches_term = term in str(vals[1]).lower() or term in str(vals[4]).lower() or term in search_text
+                elif filter_field == 'Programa':
+                    matches_term = term in search_text
                 else:
-                    combined = ' '.join(str(v) for v in vals).lower()
-                    matches_term = term in combined
+                    matches_term = term in search_text or term in ' '.join(str(v) for v in vals).lower()
             matches_proto = (proto == 'Todos') or (proto.lower() in str(vals[2]).lower())
             if matches_term and matches_proto:
                 self.firewall_tree.reattach(iid, '', 'end')
@@ -3409,14 +4209,25 @@ class App(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def run_cleanup(self):
+    def run_cleanup(self, include_defender: bool = False):
+        selected_ids = [item_id for item_id, var in self.cleanup_action_vars.items() if var.get()]
+        return self._execute_cleanup(selected_ids=selected_ids, include_defender=include_defender, defender_only=False)
+
+    def run_defender_scan(self):
+        return self._execute_cleanup(selected_ids=[], include_defender=True, defender_only=True)
+
+    def _execute_cleanup(self, selected_ids, include_defender, defender_only):
         if getattr(self, '_maintenance_running', False):
             return
         self._maintenance_running = True
         self._set_cleanup_buttons_state(False)
         self._reset_cleanup_ui()
-        self._append_cleanup_log("Iniciando manutenção...")
-        selected_ids = [item_id for item_id, var in self.cleanup_action_vars.items() if var.get()]
+        if defender_only:
+            self._append_cleanup_log("Iniciando verificação do Defender...")
+        elif include_defender:
+            self._append_cleanup_log("Iniciando limpeza lenta com Defender...")
+        else:
+            self._append_cleanup_log("Iniciando limpeza rápida sem Defender...")
 
         def worker():
             try:
@@ -3433,6 +4244,8 @@ class App(tk.Tk):
                     settings=self._report_settings,
                     progress_callback=progress,
                     selected_programs=self.selected_programs_for_report,
+                    include_defender=include_defender,
+                    run_defender_only=defender_only,
                 )
                 self._schedule_ui_update(lambda result=result: self._finalize_cleanup(result))
             except Exception as exc:
